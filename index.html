@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alanna Brooke</title>
+  <meta name="description" content="Personal website of Alanna Brooke.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="#top">AB</a>
+    <nav>
+      <a href="#about">About</a>
+      <a href="#work">Work</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="eyebrow">Hello, I'm</p>
+      <h1>Alanna Brooke</h1>
+      <p class="lede">A short line about what you do and what you care about. Edit this in <code>index.html</code>.</p>
+      <a class="button" href="#contact">Get in touch</a>
+    </section>
+
+    <section id="about">
+      <h2>About</h2>
+      <p>A few sentences about your background, what you're working on now, and what you're interested in.</p>
+    </section>
+
+    <section id="work">
+      <h2>Selected work</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Project one</h3>
+          <p>What it was, your role, and the result.</p>
+          <a href="#">View project →</a>
+        </article>
+        <article class="card">
+          <h3>Project two</h3>
+          <p>What it was, your role, and the result.</p>
+          <a href="#">View project →</a>
+        </article>
+        <article class="card">
+          <h3>Project three</h3>
+          <p>What it was, your role, and the result.</p>
+          <a href="#">View project →</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="contact">
+      <h2>Contact</h2>
+      <p>The best way to reach me is by email.</p>
+      <p><a href="mailto:you@example.com">you@example.com</a></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Alanna Brooke</p>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>
