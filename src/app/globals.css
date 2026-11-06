@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, var(--font-jetbrains), monospace;
+
+  --animate-window-in: window-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  --animate-menu-in: menu-in 120ms ease-out;
+  --animate-dock-bounce: dock-bounce 1s ease-in-out;
+  --animate-boot-progress: boot-progress 2s cubic-bezier(0.6, 0.1, 0.3, 1) forwards;
+
+  @keyframes window-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes menu-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dock-bounce {
+    0%, 100% { transform: translateY(0); }
+    20% { transform: translateY(-38%); }
+    40% { transform: translateY(0); }
+    60% { transform: translateY(-20%); }
+    80% { transform: translateY(0); }
+  }
+  @keyframes boot-progress {
+    from { width: 0%; }
+    to { width: 100%; }
+  }
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background: #1b1f6b;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* An original abstract wallpaper: layered gradients with soft dune-like waves. */
+.wallpaper {
+  background:
+    radial-gradient(ellipse 70% 55% at 15% 105%, #ff9d6c 0%, transparent 60%),
+    radial-gradient(ellipse 65% 55% at 90% 100%, #ff5fa2 0%, transparent 60%),
+    radial-gradient(ellipse 80% 65% at 55% 35%, #6c5cff 0%, transparent 65%),
+    radial-gradient(ellipse 55% 45% at 5% 5%, #2bb3ff 0%, transparent 60%),
+    linear-gradient(180deg, #171c66 0%, #3b2c94 45%, #b2518f 80%, #ff9a6b 100%);
+}
+.wallpaper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='none'><path d='M0 560 C 260 470 520 640 820 560 S 1260 430 1440 500 L1440 900 L0 900 Z' fill='white' fill-opacity='0.07'/><path d='M0 680 C 320 600 560 760 900 690 S 1300 600 1440 650 L1440 900 L0 900 Z' fill='white' fill-opacity='0.08'/><path d='M0 790 C 300 740 640 860 980 800 S 1320 760 1440 780 L1440 900 L0 900 Z' fill='white' fill-opacity='0.09'/></svg>")
+      center / 100% 100% no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
