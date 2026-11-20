@@ -146,3 +146,21 @@ export const resume = {
   education: [{ school: "School Name", degree: "Degree, Field", period: "2017 – 2021" }],
   skills: ["TypeScript", "React", "Next.js", "Tailwind CSS", "Figma"],
 };
+
+export type IconName =
+  | "finder"
+  | "notes"
+  | "mail"
+  | "preview"
+  | "terminal"
+  | "trash"
+  | "github"
+  | "linkedin";
+
+// Optional: replace any app icon with your own image.
+// Put the file in public/icons/ and add a line here, for example:
+//   finder: "/icons/finder.png",
+// Square PNG, SVG or WebP files around 512×512 work best. Use only icons you
+// made or have a license to use on a website. Leave an entry out to keep the
+// built-in drawn icon.
+export const customIcons: Partial<Record<IconName, string>> = {};

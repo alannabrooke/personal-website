@@ -18,6 +18,8 @@ Windows can be dragged, resized, minimized to the dock, zoomed and closed. The m
 
 All the text lives in one file: **`src/data/content.ts`** (name, email, notes, projects, résumé, social links).
 
+To use your own icon for any app, put the image in `public/icons/` and point to it in `customIcons` in the same file (see `public/icons/README.md`). Apps without a custom image keep the built-in drawn icon.
+
 To offer a downloadable PDF résumé, add `public/resume.pdf` and set `RESUME_PDF` in `src/components/apps/Preview.tsx` to `"/resume.pdf"`.
 
 ## Run locally
