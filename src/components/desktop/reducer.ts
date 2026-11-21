@@ -1,6 +1,7 @@
 import type { AppId, DesktopAction, DesktopState, WinState } from "./types";
+import { libraryAppIds } from "./appCatalog";
 
-const ALL: AppId[] = ["finder", "notes", "mail", "preview", "photos", "terminal", "linkedin", "trash", "about"];
+const ALL: AppId[] = ["finder", "notes", "mail", "preview", "photos", "terminal", "linkedin", "trash", "about", "launchpad", ...libraryAppIds];
 
 const closed = (): WinState => ({
   open: false,

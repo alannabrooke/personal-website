@@ -3,7 +3,7 @@ import { customIcons, type IconName } from "@/data/content";
 import { cx } from "@/lib/cx";
 
 /** An image in public/icons can replace any bundled Dock icon. */
-function DockIcon({ name }: { name: IconName }) {
+export function DockIcon({ name }: { name: IconName }) {
   const override = customIcons[name];
   const extension = name === "terminal" || name === "photos" ? "svg" : "webp";
 

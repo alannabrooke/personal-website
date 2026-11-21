@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { About } from "@/components/apps/About";
 import { Finder } from "@/components/apps/Finder";
@@ -21,6 +22,8 @@ import {
   TrashIcon,
 } from "./icons";
 import type { AppId } from "./types";
+import { libraryApps } from "./libraryApps";
+import { LibraryIcon } from "./libraryIcons";
 
 export type AppProps = { payload?: string };
 
@@ -44,6 +47,17 @@ export type AppDef = {
 };
 
 export const APPS: Record<AppId, AppDef> = {
+  ...libraryApps,
+  launchpad: {
+    id: "launchpad",
+    name: "Apps",
+    title: "Apps",
+    Icon: () => <LibraryIcon id="launchpad" />,
+    Component: dynamic(() => import("@/components/apps/library/Launchpad").then((module) => module.Launchpad)),
+    size: { w: 850, h: 655 },
+    minSize: { w: 330, h: 330 },
+    chrome: "toolbar",
+  },
   finder: {
     id: "finder",
     name: "Finder",

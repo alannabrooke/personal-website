@@ -16,7 +16,7 @@ export function Toolbar({
   return (
     <div
       data-drag-region
-      className={cx("flex h-[52px] shrink-0 items-center gap-1.5 px-3", inset && "pl-[84px]", className)}
+      className={cx("app-toolbar flex h-[52px] shrink-0 items-center gap-1.5 px-3", inset && "pl-[84px]", className)}
     >
       {children}
     </div>

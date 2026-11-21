@@ -20,7 +20,7 @@ function LockClock() {
       <span className="min-h-[1lh] text-sm font-medium text-white/85 sm:text-lg">
         {date && dateFormat.format(date)}
       </span>
-      <span className="min-h-[1lh] text-[clamp(3.75rem,min(17vw,18svh),10.25rem)] leading-none font-semibold tracking-[-0.065em] tabular-nums">
+      <span className="lock-clock-time min-h-[1lh] text-[clamp(3.75rem,min(17vw,18svh),10.25rem)] leading-none font-semibold tracking-[-0.065em] tabular-nums">
         {date && timeFormat.format(date)}
       </span>
     </time>

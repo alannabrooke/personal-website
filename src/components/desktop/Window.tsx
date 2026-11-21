@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft } from "lucide-react";
 import { useState, type PointerEvent as ReactPointerEvent } from "react";
 import { cx } from "@/lib/cx";
 import { APPS, type AppDef } from "./apps";
@@ -110,17 +111,18 @@ export function Window({ id }: { id: AppId }) {
 
   let style: React.CSSProperties;
   if (isMobile) {
-    style = { left: 6, right: 6, top: MENU_BAR_H + 6, bottom: DOCK_SPACE - 8 };
+    style = { left: 0, right: 0, top: "var(--phone-status-height)", bottom: "var(--phone-bottom-height)" };
   } else if (st.maximized) {
     style = { left: 0, top: MENU_BAR_H, width: "100%", height: `calc(100% - ${MENU_BAR_H + DOCK_SPACE}px)` };
   } else {
     style = { left: rect.x, top: rect.y, width: rect.w, height: rect.h };
   }
 
-  // Minimizing shrinks the window down towards the dock.
-  const cx0 = isMobile ? vw / 2 : rect.x + rect.w / 2;
-  const cy0 = isMobile ? vh / 2 : rect.y + rect.h / 2;
-  const minimizedStyle: React.CSSProperties = st.minimized
+  const hiddenOnPhone = isMobile && (!active || st.minimized);
+  // Minimizing shrinks the desktop window down towards the dock.
+  const cx0 = rect.x + rect.w / 2;
+  const cy0 = rect.y + rect.h / 2;
+  const minimizedStyle: React.CSSProperties = st.minimized && !isMobile
     ? {
         transform: `translate(${vw / 2 - cx0}px, ${vh - cy0}px) scale(0.06)`,
         opacity: 0,
@@ -134,8 +136,8 @@ export function Window({ id }: { id: AppId }) {
     <div
       role="dialog"
       aria-label={app.title || app.name}
-      aria-hidden={st.minimized || undefined}
-      inert={st.minimized}
+      aria-hidden={st.minimized || hiddenOnPhone || undefined}
+      inert={st.minimized || hiddenOnPhone}
       onFocusCapture={() => {
         if (!active && !st.minimized) dispatch({ type: "focus", id });
       }}
@@ -148,22 +150,28 @@ export function Window({ id }: { id: AppId }) {
         transition: live ? "none" : "transform 380ms cubic-bezier(.4,0,.2,1), opacity 320ms ease",
       }}
       className={cx(
-        "absolute flex flex-col overflow-hidden rounded-[13px] animate-window-in",
+        "absolute flex flex-col overflow-hidden",
+        isMobile ? cx("phone-window", hiddenOnPhone && "invisible") : "rounded-[13px] animate-window-in",
         app.dark ? "bg-[#1e1e1e] text-white" : "bg-white text-[#1d1d1f]",
-        active
+        !isMobile && (active
           ? "ring-1 ring-white/35 shadow-[0_20px_56px_rgba(5,13,25,0.43),0_2px_8px_rgba(5,13,25,0.2)]"
-          : "ring-1 ring-white/20 shadow-[0_10px_30px_rgba(5,13,25,0.27)]",
+          : "ring-1 ring-white/20 shadow-[0_10px_30px_rgba(5,13,25,0.27)]"),
       )}
     >
-      <TrafficLights
+      {isMobile ? (
+        <div className="phone-app-heading">
+          <button type="button" onClick={() => dispatch({ type: "showDesktop" })}><ChevronLeft className="size-4" />Home</button>
+          <span title={app.title}>{app.id === "finder" ? "Files" : app.title}</span>
+        </div>
+      ) : <TrafficLights
         active={active}
         onClose={() => dispatch({ type: "close", id })}
         onMinimize={app.resizable === false ? undefined : () => dispatch({ type: "minimize", id })}
         onZoom={app.resizable === false || isMobile ? undefined : () => dispatch({ type: "toggleMax", id })}
         className={cx("absolute z-20 left-4", app.chrome === "title" ? "top-2" : "top-5")}
-      />
+      />}
 
-      {app.chrome === "title" && (
+      {!isMobile && app.chrome === "title" && (
         <div
           data-drag-region
           className={cx(

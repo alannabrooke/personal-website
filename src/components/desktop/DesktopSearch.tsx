@@ -4,6 +4,7 @@ import { AppWindow, FileText, Folder, Search } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { notes, projects } from "@/data/content";
 import { cx } from "@/lib/cx";
+import { appCatalog, libraryAppIds } from "./appCatalog";
 import { useDesktop } from "./DesktopContext";
 import type { AppId } from "./types";
 
@@ -16,6 +17,7 @@ type Result = {
 };
 
 const RESULTS: Result[] = [
+  { title: "Apps", kind: "App", app: "launchpad", keywords: "launchpad launcher all applications" },
   { title: "Finder", kind: "App", app: "finder", keywords: "files folders projects" },
   { title: "Notes", kind: "App", app: "notes" },
   { title: "Mail", kind: "App", app: "mail", keywords: "email contact" },
@@ -23,6 +25,7 @@ const RESULTS: Result[] = [
   { title: "Photos", kind: "App", app: "photos", keywords: "images photo library wallpaper" },
   { title: "Terminal", kind: "App", app: "terminal", keywords: "shell commands" },
   { title: "Trash", kind: "App", app: "trash" },
+  ...libraryAppIds.map((app): Result => ({ title: appCatalog[app].title, kind: "App", app, keywords: appCatalog[app].keywords })),
   ...projects.map((project): Result => ({
     title: project.name, kind: "Project", app: "finder", payload: project.id,
     keywords: `${project.role} ${project.tags.join(" ")}`,

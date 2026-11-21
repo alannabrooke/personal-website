@@ -3,13 +3,14 @@
 import { useRef, useState, type ComponentType } from "react";
 import { githubLink } from "@/data/content";
 import { cx } from "@/lib/cx";
+import { useDesktopPreferences } from "@/components/apps/library/storage";
 import { APPS } from "./apps";
 import { useDesktop } from "./DesktopContext";
 import { useViewport } from "./hooks";
 import { GitHubIcon } from "./icons";
 import type { AppId } from "./types";
 
-const DOCK_APPS: AppId[] = ["finder", "notes", "mail", "preview", "photos", "terminal"];
+const DOCK_APPS: AppId[] = ["finder", "launchpad", "notes", "mail", "preview", "photos", "terminal"];
 
 const BASE = 57;
 const MAX = 78;
@@ -17,6 +18,7 @@ const RANGE = 140;
 
 export function Dock() {
   const { state, openApp, isMobile } = useDesktop();
+  const [preferences] = useDesktopPreferences();
   const { w: viewportWidth } = useViewport();
   const [mouseX, setMouseX] = useState<number | null>(null);
   const [centers, setCenters] = useState<Record<string, number>>({});
@@ -31,7 +33,7 @@ export function Dock() {
     setCenters(next);
   };
   const base = isMobile ? Math.max(24, Math.min(44, Math.floor((viewportWidth - 78) / (DOCK_APPS.length + 2)))) : BASE;
-  const magnify = isMobile ? null : mouseX;
+  const magnify = isMobile || !preferences.magnification ? null : mouseX;
 
   const appItem = (id: AppId, label = APPS[id].name) => {
     const app = APPS[id];

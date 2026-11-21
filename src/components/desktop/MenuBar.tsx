@@ -94,6 +94,8 @@ export function MenuBar() {
       label: <Sparkle aria-hidden="true" className="size-[15px] fill-current" />,
       items: [
         { label: "About This Site", action: () => openApp("about") },
+        { label: "Apps", action: () => openApp("launchpad") },
+        { label: "System Settings", action: () => openApp("settings") },
         SEP,
         ...desktopItems,
         SEP,

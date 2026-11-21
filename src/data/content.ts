@@ -1,4 +1,6 @@
-// All of the site's text lives here. Edit this file to make the site yours.
+import type { LibraryAppId } from "@/components/desktop/appCatalog";
+
+// Portfolio copy lives here.
 
 export const profile = {
   name: "Alanna Brooke",
@@ -177,7 +179,9 @@ export type IconName =
   | "terminal"
   | "trash"
   | "github"
-  | "linkedin";
+  | "linkedin"
+  | "launchpad"
+  | LibraryAppId;
 
 // Optional: replace any app icon with your own image.
 // Put the file in public/icons/ and add a line here, for example:

@@ -1,14 +1,22 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, LayoutGrid, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, Heart, Images, LayoutGrid, Plus, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import type { AppProps } from "@/components/desktop/apps";
 import { useWindowCommands } from "@/components/desktop/windowCommands";
 import { portfolioPhotos } from "@/data/content";
+import { useLibraryStorage } from "./library/storage";
+import { Empty, field, SourceHeading, SourceItem, SourceRail } from "./library/ui";
 import { ToolButton, Toolbar } from "./ui";
 
 type Photo = { id: string; title: string; src: string; alt?: string };
 type LibraryImage = { id: string; title: string; file: File; addedAt: number };
+const noFavorites: string[] = [];
+const views = [
+  { id: "library", title: "Library", Icon: Images },
+  { id: "favorites", title: "Favorites", Icon: Heart },
+  { id: "imports", title: "Imports", Icon: FolderOpen },
+] as const;
 
 function openLibrary() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -41,12 +49,18 @@ export function Photos({ payload }: AppProps) {
   const [selectedId, setSelectedId] = useState<string | null>(payload ?? null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
+  const [favourites, setFavourites] = useLibraryStorage("photo-favourites", noFavorites);
+  const [view, setView] = useState<(typeof views)[number]["id"]>("library");
+  const [query, setQuery] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const urls = useRef(new Map<string, string>());
   const mounted = useRef(false);
   const gallery: Photo[] = [...portfolioPhotos, ...imports];
-  const index = gallery.findIndex((photo) => photo.id === selectedId);
-  const selected = index >= 0 ? gallery[index] : null;
+  const source = view === "imports" ? imports : view === "favorites" ? gallery.filter((photo) => favourites.includes(photo.id)) : gallery;
+  const results = source.filter((photo) => photo.title.toLowerCase().includes(query.trim().toLowerCase()));
+  const selected = gallery.find((photo) => photo.id === selectedId);
+  const pages = selected && results.includes(selected) ? results : gallery;
+  const index = pages.findIndex((photo) => photo.id === selectedId);
   const focusViewer = useCallback((element: HTMLDivElement | null) => {
     element?.focus();
   }, []);
@@ -116,7 +130,7 @@ export function Photos({ payload }: AppProps) {
     if (!importing) fileInput.current?.click();
   };
   const move = (delta: number) => {
-    const next = gallery[index + delta];
+    const next = pages[index + delta];
     if (index >= 0 && next) setSelectedId(next.id);
   };
 
@@ -127,7 +141,7 @@ export function Photos({ payload }: AppProps) {
 
   return (
     <div
-      className="flex h-full flex-col bg-[#fbfcff]"
+      className="app-ref @container flex h-full min-h-0 flex-col"
       onKeyDown={(event) => {
         if (!selected || event.target === fileInput.current) return;
         if (event.key === "Escape") setSelectedId(null);
@@ -137,17 +151,24 @@ export function Photos({ payload }: AppProps) {
         }
       }}
     >
-      <Toolbar inset className="border-b border-[#d8deea] bg-[#f1f4fa]">
+      <Toolbar inset className="border-b border-[var(--app-line)] bg-[var(--app-chrome)]">
         {selected && <ToolButton label="Photo Library" onClick={() => setSelectedId(null)}><LayoutGrid className="size-4" /></ToolButton>}
         <h1 className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#263449]">
-          {selected?.title ?? "Photo Library"}
+          {selected?.title ?? views.find((item) => item.id === view)?.title}
         </h1>
         {selected && (
           <div className="flex">
             <ToolButton label="Previous Photo" disabled={index <= 0} onClick={() => move(-1)}><ChevronLeft className="size-4" /></ToolButton>
-            <ToolButton label="Next Photo" disabled={index === gallery.length - 1} onClick={() => move(1)}><ChevronRight className="size-4" /></ToolButton>
+            <ToolButton label="Next Photo" disabled={index === pages.length - 1} onClick={() => move(1)}><ChevronRight className="size-4" /></ToolButton>
+            <ToolButton label="Favorite" pressed={favourites.includes(selected.id)} onClick={() => setFavourites((ids) => ids.includes(selected.id) ? ids.filter((id) => id !== selected.id) : [...ids, selected.id])}>
+              <Heart className={favourites.includes(selected.id) ? "size-4 fill-[#e25975] text-[#e25975]" : "size-4"} />
+            </ToolButton>
           </div>
         )}
+        {!selected && <label className="relative hidden w-40 @min-[610px]:block">
+          <Search aria-hidden="true" className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[#697789]" />
+          <input className={`${field} pl-7`} aria-label="Search photos" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>}
         <button
           type="button"
           aria-label="Import Photos"
@@ -168,31 +189,40 @@ export function Photos({ payload }: AppProps) {
             <PhotoImage photo={selected} className="max-h-full max-w-full object-contain" />
           </figure>
           <p className="shrink-0 border-t border-white/10 px-4 py-2 text-center text-[12px] text-[#c8d3e7]">
-            {index + 1} of {gallery.length}
+            {index + 1} of {pages.length}
           </p>
         </div>
       ) : (
-        <>
-          <ul className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(136px,1fr))] content-start gap-3 overflow-y-auto p-4">
-            {gallery.map((photo) => (
+        <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+          <SourceRail label="Photo collections" className="phone-photo-tabs">
+            <SourceHeading>Photos</SourceHeading>
+            {views.map(({ id, title, Icon }) => (
+              <SourceItem key={id} selected={view === id} icon={<Icon className="size-4" />} onClick={() => { setView(id); setQuery(""); }}>{title}</SourceItem>
+            ))}
+          </SourceRail>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {!results.length && <Empty>{query ? "No matching photos." : view === "favorites" ? "Open a photo and add it to Favorites." : "No imported photos."}</Empty>}
+            <ul className="grid min-h-0 flex-1 grid-cols-3 content-start gap-1 overflow-y-auto p-1 @min-[650px]:grid-cols-[repeat(auto-fill,minmax(118px,1fr))]">
+              {results.map((photo) => (
               <li key={photo.id}>
                 <button
                   type="button"
+                  aria-label={photo.title}
                   onClick={() => setSelectedId(photo.id)}
-                  className="group block w-full rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2b61bb]"
+                  className="group relative block aspect-square w-full overflow-hidden rounded-sm text-left focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2b61bb]"
                 >
-                  <span className="block aspect-[4/3] overflow-hidden rounded-lg border border-[#d8deea] bg-[#e5ebf4] group-hover:border-[#6f98d6]">
-                    <PhotoImage photo={photo} className="size-full object-cover" decorative />
-                  </span>
-                  <span className="mt-1.5 block truncate px-0.5 text-[12px] font-medium text-[#36465f]">{photo.title}</span>
+                  <PhotoImage photo={photo} className="size-full bg-[#e5ebf4] object-cover" decorative />
+                  {favourites.includes(photo.id) && <Heart aria-hidden="true" className="absolute right-1.5 bottom-1.5 size-3.5 fill-white text-white drop-shadow" />}
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 truncate bg-black/60 p-1.5 text-[11px] text-white opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">{photo.title}</span>
                 </button>
               </li>
-            ))}
-          </ul>
-          <footer className="shrink-0 border-t border-[#e0e6ef] py-1 text-center text-[11px] text-[#52627b]">
-            {gallery.length} {gallery.length === 1 ? "photo" : "photos"}
-          </footer>
-        </>
+              ))}
+            </ul>
+            <footer className="shrink-0 border-t border-[#e0e6ef] py-1.5 text-center text-[11px] text-[#52627b]">
+              {results.length} {results.length === 1 ? "photo" : "photos"}
+            </footer>
+          </div>
+        </div>
       )}
     </div>
   );

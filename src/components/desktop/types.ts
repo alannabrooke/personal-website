@@ -1,3 +1,5 @@
+import type { LibraryAppId } from "./appCatalog";
+
 export type AppId =
   | "finder"
   | "notes"
@@ -7,7 +9,9 @@ export type AppId =
   | "terminal"
   | "linkedin"
   | "trash"
-  | "about";
+  | "about"
+  | "launchpad"
+  | LibraryAppId;
 
 export type WinState = {
   open: boolean;
