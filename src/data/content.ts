@@ -12,9 +12,30 @@ export const profile = {
   tagline: "I make thoughtful, well-crafted things for the web.",
 };
 
-export const socials = [
-  { label: "GitHub", href: "https://github.com/alannabrooke" },
-  { label: "LinkedIn", href: "https://www.linkedin.com/" },
+export const githubLink = { label: "GitHub", href: "https://github.com/alannabrooke" };
+export const linkedinLink = { label: "LinkedIn", href: "https://www.linkedin.com/in/alannabrooke" };
+export const socials = [githubLink, linkedinLink];
+
+export const portraitPhoto = {
+  id: "alanna-portrait",
+  title: "Alanna Portrait",
+  src: "/wallpapers/alanna-portrait.webp",
+  alt: "Portrait of Alanna looking to the side against a gray backdrop",
+};
+
+export const desktopPhotos = [
+  {
+    id: "baby-alanna",
+    title: "Baby Alanna",
+    src: "/photos/baby-alanna.webp",
+    alt: "Alanna as a baby wearing a straw hat",
+  },
+  portraitPhoto,
+];
+
+export const portfolioPhotos = [
+  { id: "coastal-dusk", title: "Coastal Dusk", src: "/wallpapers/coastal-dusk.webp" },
+  ...desktopPhotos,
 ];
 
 export type Note = {
@@ -24,7 +45,7 @@ export type Note = {
   body: string[];
 };
 
-// Shown in the Notes app. The first note opens when the site loads.
+// Shown in the Notes app. The first note is selected when the app opens.
 export const notes: Note[] = [
   {
     id: "about",
@@ -152,6 +173,7 @@ export type IconName =
   | "notes"
   | "mail"
   | "preview"
+  | "photos"
   | "terminal"
   | "trash"
   | "github"
@@ -162,5 +184,5 @@ export type IconName =
 //   finder: "/icons/finder.png",
 // Square PNG, SVG or WebP files around 512×512 work best. Use only icons you
 // made or have a license to use on a website. Leave an entry out to keep the
-// built-in drawn icon.
+// built-in icon.
 export const customIcons: Partial<Record<IconName, string>> = {};

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DesktopContext, type DesktopApi } from "./DesktopContext";
 import { DesktopIcons } from "./DesktopIcons";
 import { Dock } from "./Dock";
 import { useIsMobile, useMounted } from "./hooks";
+import { LockScreen } from "./LockScreen";
 import { MenuBar } from "./MenuBar";
 import { PowerScreen } from "./PowerScreen";
 import { initialState, reducer } from "./reducer";
@@ -14,11 +15,18 @@ import { Window } from "./Window";
 export function Desktop() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const desktopRef = useRef<HTMLElement>(null);
   const isMobile = useIsMobile();
   const mounted = useMounted();
+  const desktopAvailable = state.power === "on" && !state.locked;
+
+  useEffect(() => {
+    if (desktopAvailable) desktopRef.current?.focus({ preventScroll: true });
+  }, [desktopAvailable]);
 
   const openApp = useCallback((id: AppId, payload?: string) => dispatch({ type: "open", id, payload }), []);
   const closeApp = useCallback((id: AppId) => dispatch({ type: "close", id }), []);
+  const unlockDesktop = useCallback(() => dispatch({ type: "setLocked", locked: false }), []);
 
   const api = useMemo<DesktopApi>(
     () => ({ state, dispatch, isMobile, openApp, closeApp }),
@@ -30,7 +38,11 @@ export function Desktop() {
   return (
     <DesktopContext.Provider value={api}>
       <main
-        className="wallpaper fixed inset-0 overflow-hidden select-none"
+        ref={desktopRef}
+        tabIndex={-1}
+        inert={!desktopAvailable}
+        data-revealed={desktopAvailable}
+        className="wallpaper fixed inset-0 overflow-hidden outline-none select-none"
         onPointerDown={(e) => {
           if (e.target === e.currentTarget) {
             setSelectedIcon(null);
@@ -44,6 +56,9 @@ export function Desktop() {
         {mounted && openIds.map((id) => <Window key={id} id={id} />)}
         <Dock />
       </main>
+      {state.power === "on" && (
+        <LockScreen locked={state.locked} onOpen={unlockDesktop} />
+      )}
       <PowerScreen />
     </DesktopContext.Provider>
   );

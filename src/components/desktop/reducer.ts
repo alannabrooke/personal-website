@@ -1,6 +1,6 @@
 import type { AppId, DesktopAction, DesktopState, WinState } from "./types";
 
-const ALL: AppId[] = ["finder", "notes", "mail", "preview", "terminal", "trash", "about"];
+const ALL: AppId[] = ["finder", "notes", "mail", "preview", "photos", "terminal", "linkedin", "trash", "about"];
 
 const closed = (): WinState => ({
   open: false,
@@ -17,9 +17,7 @@ const closed = (): WinState => ({
 
 export function initialState(): DesktopState {
   const wins = Object.fromEntries(ALL.map((id) => [id, closed()])) as Record<AppId, WinState>;
-  // The "About Me" note greets visitors on load.
-  wins.notes = { ...wins.notes, open: true, z: 1, payload: "about" };
-  return { wins, focused: "notes", topZ: 1, launches: 0, power: "on" };
+  return { wins, focused: null, topZ: 0, launches: 0, locked: true, power: "on" };
 }
 
 /** The visible window with the highest z-index, if any. */
@@ -53,6 +51,7 @@ export function reducer(state: DesktopState, action: DesktopAction): DesktopStat
             slot: openCount,
             launch: launches,
             payload: action.payload,
+            payloadVersion: action.payload === undefined ? undefined : z,
           }),
           focused: action.id,
           topZ: z,
@@ -64,7 +63,7 @@ export function reducer(state: DesktopState, action: DesktopAction): DesktopStat
         wins: patch(state, action.id, {
           minimized: false,
           z,
-          ...(action.payload !== undefined ? { payload: action.payload } : {}),
+          ...(action.payload !== undefined ? { payload: action.payload, payloadVersion: z } : {}),
         }),
         focused: action.id,
         topZ: z,
@@ -77,6 +76,13 @@ export function reducer(state: DesktopState, action: DesktopAction): DesktopStat
     case "minimize": {
       const wins = patch(state, action.id, { minimized: true });
       return { ...state, wins, focused: topmost(wins) };
+    }
+    case "showDesktop": {
+      const wins = { ...state.wins };
+      for (const id of ALL) {
+        if (wins[id].open) wins[id] = { ...wins[id], minimized: true };
+      }
+      return { ...state, wins, focused: null };
     }
     case "toggleMax":
       return {
@@ -102,6 +108,8 @@ export function reducer(state: DesktopState, action: DesktopAction): DesktopStat
         ...state,
         wins: patch(state, action.id, { x: action.x, y: action.y, w: action.w, h: action.h }),
       };
+    case "setLocked":
+      return state.locked === action.locked ? state : { ...state, locked: action.locked };
     case "power":
       if (action.power === "off") return { ...initialState(), power: "off" };
       return { ...state, power: action.power };

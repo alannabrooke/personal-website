@@ -14,13 +14,13 @@ function resolveRect(app: AppDef, st: WinState, vw: number, vh: number): Rect {
   const w = st.w ?? Math.min(app.size.w, vw - 24);
   const h = st.h ?? Math.min(app.size.h, vh - MENU_BAR_H - DOCK_SPACE - 16);
   const offset = (st.slot % 6) * 26;
-  const x = st.x ?? Math.max(8, Math.round((vw - w) / 2) + offset);
+  const x = st.x ?? Math.max(8, Math.min(vw - w - 8, Math.round((vw - w) / 2) + offset));
   const y =
     st.y ??
-    Math.max(
-      MENU_BAR_H + 10,
+    Math.max(MENU_BAR_H + 8, Math.min(
+      vh - DOCK_SPACE - h,
       Math.round(MENU_BAR_H + (vh - MENU_BAR_H - DOCK_SPACE - h) / 2) + offset,
-    );
+    ));
   return { x, y, w, h };
 }
 
@@ -110,7 +110,7 @@ export function Window({ id }: { id: AppId }) {
 
   let style: React.CSSProperties;
   if (isMobile) {
-    style = { left: 6, right: 6, top: MENU_BAR_H + 6, bottom: 78 };
+    style = { left: 6, right: 6, top: MENU_BAR_H + 6, bottom: DOCK_SPACE - 8 };
   } else if (st.maximized) {
     style = { left: 0, top: MENU_BAR_H, width: "100%", height: `calc(100% - ${MENU_BAR_H + DOCK_SPACE}px)` };
   } else {
@@ -135,6 +135,10 @@ export function Window({ id }: { id: AppId }) {
       role="dialog"
       aria-label={app.title || app.name}
       aria-hidden={st.minimized || undefined}
+      inert={st.minimized}
+      onFocusCapture={() => {
+        if (!active && !st.minimized) dispatch({ type: "focus", id });
+      }}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
       style={{
@@ -144,12 +148,11 @@ export function Window({ id }: { id: AppId }) {
         transition: live ? "none" : "transform 380ms cubic-bezier(.4,0,.2,1), opacity 320ms ease",
       }}
       className={cx(
-        "absolute flex flex-col overflow-hidden rounded-[10px] animate-window-in",
+        "absolute flex flex-col overflow-hidden rounded-[13px] animate-window-in",
         app.dark ? "bg-[#1e1e1e] text-white" : "bg-white text-[#1d1d1f]",
-        "ring-1 ring-black/25",
         active
-          ? "shadow-[0_24px_70px_rgba(0,0,0,0.45),0_0_0_0.5px_rgba(255,255,255,0.15)_inset]"
-          : "shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+          ? "ring-1 ring-white/35 shadow-[0_20px_56px_rgba(5,13,25,0.43),0_2px_8px_rgba(5,13,25,0.2)]"
+          : "ring-1 ring-white/20 shadow-[0_10px_30px_rgba(5,13,25,0.27)]",
       )}
     >
       <TrafficLights
@@ -157,7 +160,7 @@ export function Window({ id }: { id: AppId }) {
         onClose={() => dispatch({ type: "close", id })}
         onMinimize={app.resizable === false ? undefined : () => dispatch({ type: "minimize", id })}
         onZoom={app.resizable === false || isMobile ? undefined : () => dispatch({ type: "toggleMax", id })}
-        className={cx("absolute z-20 left-[13px]", app.chrome === "title" ? "top-[8px]" : "top-[19px]")}
+        className={cx("absolute z-20 left-4", app.chrome === "title" ? "top-2" : "top-5")}
       />
 
       {app.chrome === "title" && (
@@ -176,7 +179,7 @@ export function Window({ id }: { id: AppId }) {
       )}
 
       <div className={cx("relative min-h-0 flex-1", !active && "[&_[data-drag-region]]:opacity-90")}>
-        <Component payload={st.payload} />
+        <Component key={st.payloadVersion} payload={st.payload} />
       </div>
 
       {canResize && (

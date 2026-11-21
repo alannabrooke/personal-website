@@ -39,7 +39,7 @@ body {
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  background: #1b1f6b;
+  background: #142c42;
 }
 
 input,
@@ -47,23 +47,113 @@ textarea {
   user-select: text;
 }
 
-/* An original abstract wallpaper: layered gradients with soft dune-like waves. */
 .wallpaper {
-  background:
-    radial-gradient(ellipse 70% 55% at 15% 105%, #ff9d6c 0%, transparent 60%),
-    radial-gradient(ellipse 65% 55% at 90% 100%, #ff5fa2 0%, transparent 60%),
-    radial-gradient(ellipse 80% 65% at 55% 35%, #6c5cff 0%, transparent 65%),
-    radial-gradient(ellipse 55% 45% at 5% 5%, #2bb3ff 0%, transparent 60%),
-    linear-gradient(180deg, #171c66 0%, #3b2c94 45%, #b2518f 80%, #ff9a6b 100%);
+  background: linear-gradient(180deg, #91958f, #a1a59e 46%, #767a73);
 }
+
 .wallpaper::before {
+  --wallpaper-zoom: clamp(0px, calc((100vw - 900px) * 0.25), 20vh);
   content: "";
   position: absolute;
-  inset: 0;
+  z-index: -1;
+  top: calc(-10% - var(--wallpaper-zoom) / 2);
+  left: 50%;
+  height: calc(116% + var(--wallpaper-zoom));
+  aspect-ratio: 2 / 3;
+  translate: -50% 0;
   pointer-events: none;
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='none'><path d='M0 560 C 260 470 520 640 820 560 S 1260 430 1440 500 L1440 900 L0 900 Z' fill='white' fill-opacity='0.07'/><path d='M0 680 C 320 600 560 760 900 690 S 1300 600 1440 650 L1440 900 L0 900 Z' fill='white' fill-opacity='0.08'/><path d='M0 790 C 300 740 640 860 980 800 S 1320 760 1440 780 L1440 900 L0 900 Z' fill='white' fill-opacity='0.09'/></svg>")
-      center / 100% 100% no-repeat;
+    linear-gradient(180deg, rgb(21 24 27 / 28%), rgb(21 24 27 / 16%) 52%, rgb(21 24 27 / 28%)),
+    url("/wallpapers/alanna-portrait.webp") center / cover no-repeat;
+  mask-image: linear-gradient(90deg, transparent, black 16%, black 84%, transparent);
+  filter: blur(clamp(6px, 1.1vh, 11px));
+}
+
+.lock-screen.wallpaper {
+  background: linear-gradient(156deg, #454741, #57534d 48%, #292d31);
+}
+
+.lock-screen::before {
+  top: -24%;
+  height: 152%;
+  aspect-ratio: 4 / 5;
+  opacity: 0.7;
+  filter: blur(clamp(26px, 4vw, 58px)) brightness(0.65);
+}
+
+.lock-screen[data-locked="false"] {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lock-screen {
+    --lock-screen-fade: 620ms;
+    transition: opacity var(--lock-screen-fade) ease-in-out, visibility 0s;
+  }
+
+  .lock-screen[data-locked="false"] {
+    transition-delay: 0s, var(--lock-screen-fade);
+  }
+
+  [data-revealed="true"] .desktop-file {
+    animation-name: desktop-file-reveal;
+    animation-duration: 410ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: backwards;
+  }
+
+  .desktop-file:focus-visible {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  @keyframes desktop-file-reveal {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+.dock-glass {
+  background:
+    radial-gradient(ellipse at 50% -35%, rgb(234 248 255 / 20%), transparent 68%),
+    linear-gradient(180deg, rgb(227 247 255 / 13%), rgb(155 200 221 / 7%) 44%, rgb(220 243 255 / 15%));
+  border: 1px solid rgb(224 247 255 / 43%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 55%),
+    inset 0 -1px 2px rgb(227 247 255 / 24%),
+    inset 0 0 9px rgb(202 238 255 / 17%),
+    0 8px 26px rgb(5 16 30 / 25%);
+  -webkit-backdrop-filter: blur(10px) saturate(165%);
+  backdrop-filter: blur(10px) saturate(165%);
+}
+
+.dock-glass .dock-icon-tile {
+  position: relative;
+}
+
+.dock-glass .dock-icon-tile::after {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  border-radius: 23%;
+  pointer-events: none;
+  background:
+    linear-gradient(158deg, rgb(255 255 255 / 16%), transparent 31%),
+    linear-gradient(0deg, rgb(213 239 255 / 13%), transparent 18%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 48%),
+    inset 0 -1px 0 rgb(215 239 255 / 25%);
+}
+
+.dock-tooltip {
+  background: linear-gradient(180deg, rgb(220 239 251 / 91%), rgb(175 210 234 / 79%));
+  border: 1px solid rgb(232 249 255 / 60%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 62%), 0 4px 12px rgb(5 16 30 / 24%);
+  color: #172a40;
+  -webkit-backdrop-filter: blur(14px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
 }
 
 @media (prefers-reduced-motion: reduce) {
