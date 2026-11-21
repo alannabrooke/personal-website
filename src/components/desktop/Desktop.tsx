@@ -47,7 +47,7 @@ export function Desktop() {
         data-revealed={desktopAvailable}
         data-mobile={isMobile}
         data-wallpaper={preferences.wallpaper}
-        className="wallpaper fixed inset-0 overflow-hidden outline-none select-none"
+        className="wallpaper fixed inset-0 overflow-clip outline-none select-none"
         onPointerDown={(e) => {
           if (e.target === e.currentTarget) {
             setSelectedIcon(null);

@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Bookmark, Cloud, CloudRain, CloudSun, Compass, ExternalLink, MapPin, PanelLeft, Plus, Search, Snowflake, Sun, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { useDesktop } from "@/components/desktop/DesktopContext";
 import { githubLink, linkedinLink } from "@/data/content";
 import { cx } from "@/lib/cx";
 import { useLibraryStorage } from "./storage";
@@ -117,6 +118,7 @@ function BrowserPage({ page, navigate }: { page: Page; navigate: (page: Page) =>
 }
 
 export function SafariApp() {
+  const { isMobile } = useDesktop();
   const [tabs, setTabs] = useState([initialTab]);
   const [active, setActive] = useState(initialTab.id);
   const [input, setInput] = useState<string | null>(null);
@@ -138,28 +140,37 @@ export function SafariApp() {
     if (active === id) { setActive(next[0].id); setInput(null); }
   };
 
-  return (
-    <LibraryFrame controls={<>
-      <Action aria-label="Toggle Favorites sidebar" aria-pressed={showFavorites} onClick={() => setShowFavorites((visible) => !visible)}><PanelLeft className="size-4" /></Action>
+  const address = (
+    <form className="relative mx-auto flex w-full min-w-32 max-w-[470px] flex-1" onSubmit={(event) => { event.preventDefault(); navigate(addressPage(input ?? pageAddress(page))); }}>
+      <Search aria-hidden="true" className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#63768e]" />
+      <input aria-label="Address or search Wikipedia" placeholder="Enter an address or search Wikipedia" className={cx(field, "rounded-full bg-white pl-8")} value={input ?? pageAddress(page)} onChange={(event) => setInput(event.target.value)} />
+    </form>
+  );
+  const controls = (
+    <>
+      {!isMobile && <Action aria-label="Toggle Favorites sidebar" aria-pressed={showFavorites} onClick={() => setShowFavorites((visible) => !visible)}><PanelLeft className="size-4" /></Action>}
       <Action aria-label="Back" disabled={tab.cursor === 0} onClick={() => move(-1)}><ArrowLeft className="size-4" /></Action>
       <Action aria-label="Forward" disabled={tab.cursor === tab.pages.length - 1} onClick={() => move(1)}><ArrowRight className="size-4" /></Action>
-      <form className="relative mx-auto flex min-w-32 max-w-[470px] flex-1" onSubmit={(event) => { event.preventDefault(); navigate(addressPage(input ?? pageAddress(page))); }}>
-        <Search aria-hidden="true" className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-[#63768e]" />
-        <input aria-label="Address or search Wikipedia" placeholder="Enter an address or search Wikipedia" className={cx(field, "rounded-full bg-white pl-8")} value={input ?? pageAddress(page)} onChange={(event) => setInput(event.target.value)} />
-      </form>
+      {isMobile ? <Action aria-label="Toggle Favorites sidebar" aria-pressed={showFavorites} onClick={() => setShowFavorites((visible) => !visible)}><Bookmark className="size-4" /></Action> : address}
       <Action aria-label="New tab" onClick={() => {
         const id = crypto.randomUUID();
         setTabs((current) => [...current, { ...initialTab, id }]);
         setActive(id);
         setInput(null);
       }}><Plus className="size-4" /></Action>
-    </>}>
-      {tabs.length > 1 && <div aria-label="Browser tabs" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--app-line)] bg-[var(--app-chrome)] px-3 py-1.5">
+    </>
+  );
+  const tabStrip = tabs.length > 1 && (
+    <div aria-label="Browser tabs" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[var(--app-line)] bg-[var(--app-chrome)] px-3 py-1.5">
         {tabs.map((item) => <div key={item.id} className={cx("flex max-w-48 items-center rounded-lg border border-[#dbe4ef]", item.id === active && "bg-white")}>
           <button type="button" aria-pressed={item.id === active} onClick={() => { setActive(item.id); setInput(null); }} className="truncate px-3 py-2 text-xs font-semibold">{pageLabel(item.pages[item.cursor])}</button>
           <button type="button" aria-label={`Close ${pageLabel(item.pages[item.cursor])} tab`} onClick={() => remove(item.id)} className="mr-1 rounded p-1 hover:bg-[#dee8f6]"><X className="size-3" /></button>
         </div>)}
-      </div>}
+    </div>
+  );
+  return (
+    <LibraryFrame controls={!isMobile && controls}>
+      {!isMobile && tabStrip}
       <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
         {showFavorites && <SourceRail label="Browser favorites">
           <SourceHeading>Favorites</SourceHeading>
@@ -170,6 +181,13 @@ export function SafariApp() {
           <BrowserPage key={JSON.stringify(page)} page={page} navigate={navigate} />
         </div>
       </div>
+      {isMobile && <div className="shrink-0 border-t border-[var(--app-line)] bg-[var(--app-chrome)]">
+        {tabStrip}
+        <div className="px-3 pt-2">{address}</div>
+        <div aria-label="Browser controls" className="flex justify-around gap-2 px-4 py-1">
+          {controls}
+        </div>
+      </div>}
     </LibraryFrame>
   );
 }

@@ -95,19 +95,19 @@ export function Calendar() {
         }}>{view}</Action>)}
       </div>
     </>}>
-      <div className="grid min-h-0 flex-1 content-start overflow-auto @min-[650px]:grid-cols-[205px_minmax(0,1fr)]">
-        <section className="order-2 p-3 @min-[650px]:order-none @min-[650px]:col-start-2 @min-[650px]:row-start-1">
+      <div className="grid min-h-0 flex-1 content-start overflow-auto @min-[650px]:grid-cols-[205px_minmax(0,1fr)] @min-[650px]:content-stretch">
+        <section className="order-2 flex min-w-0 flex-col p-3 @min-[650px]:order-none @min-[650px]:col-start-2 @min-[650px]:row-start-1">
           <h2 className="mb-3 px-1 text-2xl font-semibold tracking-tight">{(calendarView === "Month" ? month : selected).toLocaleDateString([], { month: "long", year: "numeric", ...(calendarView === "Day" ? { day: "numeric" } : {}) })}</h2>
           {calendarView !== "Day" && <div className="grid grid-cols-7 text-center text-xs font-semibold text-[#50627b]">{weekdays.map((day) => <span key={day} className="py-2">{day}</span>)}</div>}
-          <div className={cx("grid overflow-hidden border border-[var(--app-line)]", calendarView === "Day" ? "grid-cols-1" : "grid-cols-7")}>
+          <div className={cx("grid auto-rows-fr overflow-hidden border border-[var(--app-line)] @min-[650px]:flex-1", calendarView === "Day" ? "grid-cols-1" : "grid-cols-7")}>
             {cells.map((date) => {
               const key = dayKey(date);
               const dayEvents = events.filter((event) => event.date === key);
               return (
                 <button type="button" key={key} aria-label={date.toLocaleDateString([], { dateStyle: "full" })} aria-pressed={key === selectedKey} onClick={() => chooseDay(date)}
-                  className={cx("relative min-h-[43px] min-w-0 border-r border-b border-[var(--app-line)] p-1 text-left text-xs focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[#315f9e] @min-[650px]:min-h-[53px]", key === selectedKey ? "bg-[#e4eef9]" : "hover:bg-[#f1f5fa]", date.getMonth() !== month.getMonth() && key !== selectedKey && "text-[#788294]")}>
+                  className={cx("relative flex min-h-[43px] min-w-0 flex-col border-r border-b border-[var(--app-line)] p-1 text-left text-xs focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[#315f9e] @min-[650px]:min-h-[48px]", key === selectedKey ? "bg-[#e4eef9]" : "hover:bg-[#f1f5fa]", date.getMonth() !== month.getMonth() && key !== selectedKey && "text-[#788294]")}>
                   <span className={cx("inline-grid size-5 place-items-center rounded-full", key === dayKey(today) && "bg-[#bf4b60] text-white")}>{date.getDate()}</span>
-                  {dayEvents.slice(0, calendarView === "Day" ? 6 : 1).map((entry) => <span key={entry.id} className="mt-1 block truncate rounded bg-[#c9dbf2] px-1 text-[10px] text-[#244a7e]">{entry.title}</span>)}
+                  {dayEvents.slice(0, calendarView === "Day" ? 6 : 1).map((entry) => <span key={entry.id} className="mt-1 w-full truncate rounded bg-[#c9dbf2] px-1 text-[10px] text-[#244a7e]">{entry.title}</span>)}
                 </button>
               );
             })}

@@ -1,14 +1,15 @@
 "use client";
 
-import { Activity, Clock3, Database, RefreshCw } from "lucide-react";
+import { Activity, HardDrive, Image as ImageIcon, LayoutPanelTop, RefreshCw, Type } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { APPS } from "@/components/desktop/apps";
 import { useDesktop } from "@/components/desktop/DesktopContext";
 import { useNowSeconds } from "@/components/desktop/hooks";
 import type { AppId } from "@/components/desktop/types";
 import { cx } from "@/lib/cx";
 import { useDesktopPreferences } from "./storage";
-import { Action, Empty, field, label, LibraryFrame, Panel } from "./ui";
+import { Action, Empty, field, label, LibraryFrame, SourceHeading, SourceItem, SourceRail } from "./ui";
 
 type Operator = "+" | "−" | "×" | "÷";
 type Calculation = { value: string; left: number | null; op: Operator | null; fresh: boolean };
@@ -47,20 +48,23 @@ export function Calculator() {
   const [calc, setCalc] = useState(clear);
   const press = (key: string) => setCalc((current) => calculate(current, key));
   return (
-    <LibraryFrame title="Calculator" className="bg-[#172b44] text-white">
-      <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-4" onKeyDown={(event) => {
+    <LibraryFrame title="Calculator" className="calculator-app">
+      <div className="mx-auto flex w-full max-w-sm min-h-0 flex-1 flex-col gap-3 overflow-auto p-3 @min-[350px]:p-5" onKeyDown={(event) => {
         const key = aliases[event.key] ?? event.key;
         if (event.key === "Enter" && event.target instanceof HTMLButtonElement) return;
         if (!keys.includes(key) && key !== "Backspace") return;
         event.preventDefault();
         press(key);
       }}>
-        <output tabIndex={0} aria-label="Calculator display" aria-live="polite" className="flex min-h-[70px] shrink-0 items-end justify-end overflow-x-auto rounded-xl bg-[#0c1d32] px-4 pb-3 text-right font-mono text-3xl tabular-nums">{calc.value}</output>
-        <div className="grid flex-1 grid-cols-4 gap-2">
+        <div className="flex min-h-20 flex-[1_0_auto] flex-col items-end justify-end px-2">
+          {calc.op && <span className="mb-1 text-sm text-white/65">{calc.left} {calc.op}</span>}
+          <output tabIndex={0} aria-label="Calculator display" aria-live="polite" className="max-w-full overflow-x-auto pb-1 text-right text-[clamp(1.65rem,12cqw,3.75rem)] leading-none font-light tabular-nums">{calc.value}</output>
+        </div>
+        <div className="grid flex-[4_0_auto] auto-rows-fr grid-cols-4 gap-2">
           {keys.map((key) => <button type="button" key={key} onClick={() => press(key)} className={cx(
-            "min-h-9 rounded-lg text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+            "calculator-key min-h-8 rounded-[18px] text-xl font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
             key === "0" && "col-span-2",
-            operators.includes(key as Operator) || key === "=" ? "bg-[#f0b267] text-[#272014] hover:bg-[#ffd490]" : "bg-white/12 hover:bg-white/22",
+            operators.includes(key as Operator) || key === "=" ? "calculator-operator" : ["AC", "±", "%"].includes(key) && "calculator-function",
           )}>{key}</button>)}
         </div>
       </div>
@@ -72,6 +76,27 @@ type ClockMode = "World Clock" | "Timer" | "Stopwatch";
 const clockModes: ClockMode[] = ["World Clock", "Timer", "Stopwatch"];
 const cities = [["Local time", undefined], ["Ottawa", "America/Toronto"], ["London", "Europe/London"], ["Tokyo", "Asia/Tokyo"]] as const;
 const duration = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+
+function WorldClockFace({ city, timeZone, now }: { city: string; timeZone?: string; now: number | null }) {
+  const parts = now === null ? [] : new Intl.DateTimeFormat([], {
+    timeZone, hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23", numberingSystem: "latn",
+  }).formatToParts(now * 1000);
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  const second = Number(parts.find((part) => part.type === "second")?.value ?? 0);
+  const time = now === null ? null : new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit", timeZone }).format(now * 1000);
+
+  return <div className="flex min-w-0 flex-col items-center gap-1.5 py-2">
+    <div aria-hidden="true" className="clock-face" data-night={hour < 6 || hour >= 19}>
+      {Array.from({ length: 12 }, (_, i) => <span key={i} className="clock-tick" style={{ "--clock-angle": `${i * 30}deg` } as CSSProperties} />)}
+      <span className="clock-hand clock-hour" style={{ "--clock-angle": `${hour * 30 + minute / 2}deg` } as CSSProperties} />
+      <span className="clock-hand clock-minute" style={{ "--clock-angle": `${minute * 6}deg` } as CSSProperties} />
+      <span className="clock-hand clock-second" style={{ "--clock-angle": `${second * 6}deg` } as CSSProperties} />
+    </div>
+    <h2 className="mt-1 text-sm font-semibold">{city}</h2>
+    <span className="text-xs text-[var(--app-muted)] tabular-nums">{time}</span>
+  </div>;
+}
 
 export function ClockApp() {
   const now = useNowSeconds();
@@ -86,19 +111,15 @@ export function ClockApp() {
   const seconds = Math.max(0, Math.floor((elapsed + (started && now !== null ? Math.max(0, now * 1000 - started) : 0)) / 1000));
 
   return (
-    <LibraryFrame title="Clock" controls={clockModes.map((item) => <Action key={item} primary={item === mode} aria-pressed={item === mode} onClick={() => setMode(item)}>{item}</Action>)}>
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+    <LibraryFrame title="Clock" className="[--app-accent:#815228] [--app-paper:#faf8f5]" controls={clockModes.map((item) => <Action key={item} primary={item === mode} aria-pressed={item === mode} onClick={() => setMode(item)}>{item}</Action>)}>
+      <div className="min-h-0 flex-1 overflow-auto p-3">
         {mode === "World Clock" ? (
-          <div className="grid grid-cols-2 gap-3">
-            {cities.map(([city, timeZone]) => <Panel key={city} className="min-w-0">
-              <h2 className="text-sm font-semibold text-[#50627b]">{city}</h2>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{now !== null && new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit", timeZone }).format(now * 1000)}</p>
-            </Panel>)}
+          <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
+            {cities.map(([city, timeZone]) => <WorldClockFace key={city} city={city} timeZone={timeZone} now={now} />)}
           </div>
         ) : (
-          <Panel className="mx-auto max-w-sm space-y-4 text-center">
-            <Clock3 aria-hidden="true" className="mx-auto size-7 text-[#315f9e]" />
-            <output aria-label={mode} className="block font-mono text-5xl tracking-tight tabular-nums">{duration(mode === "Timer" ? remaining : seconds)}</output>
+          <div className="mx-auto max-w-sm space-y-5 px-4 py-8 text-center">
+            <output aria-label={mode} className="block text-7xl leading-none font-light tracking-tight tabular-nums">{duration(mode === "Timer" ? remaining : seconds)}</output>
             {mode === "Timer" ? <>
               <label className={cx(label, "mx-auto max-w-32 text-left")}>Minutes <input className={field} type="number" min="1" max="180" value={minutes} onChange={(event) => setMinutes(event.target.value)} /></label>
               <div className="flex flex-wrap justify-center gap-2">
@@ -113,7 +134,7 @@ export function ClockApp() {
               }}>{started === null ? "Start" : "Pause"}</Action>
               <Action onClick={() => { setStarted(null); setElapsed(0); }}>Reset</Action>
             </div>}
-          </Panel>
+          </div>
         )}
       </div>
     </LibraryFrame>
@@ -122,27 +143,32 @@ export function ClockApp() {
 
 export function SystemSettings() {
   const [prefs, setPrefs] = useDesktopPreferences();
+  const [section, setSection] = useState<"Wallpaper" | "Desktop & Dock">("Wallpaper");
   return (
     <LibraryFrame title="System Settings">
-      <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
-        <Panel>
-          <h2 className="mb-3 font-semibold">Wallpaper</h2>
-          <div className="grid grid-cols-2 gap-3">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="Settings sections">
+          <SourceItem icon={<ImageIcon aria-hidden="true" className="size-4" />} selected={section === "Wallpaper"} onClick={() => setSection("Wallpaper")}>Wallpaper</SourceItem>
+          <SourceItem icon={<LayoutPanelTop className="size-4" />} selected={section === "Desktop & Dock"} onClick={() => setSection("Desktop & Dock")}>Desktop &amp; Dock</SourceItem>
+        </SourceRail>
+        <section className="min-h-0 flex-1 overflow-auto bg-[#f8f9fc] p-5">
+          <h2 className="mb-4 text-lg font-semibold">{section}</h2>
+          {section === "Wallpaper" ? <div className="grid grid-cols-2 gap-3">
             {(["portrait", "coast"] as const).map((wallpaper) => (
               <button type="button" key={wallpaper} aria-pressed={prefs.wallpaper === wallpaper} onClick={() => setPrefs((current) => ({ ...current, wallpaper }))}
-                className="overflow-hidden rounded-lg border border-[#dbe4ef] text-left text-sm font-semibold aria-pressed:ring-2 aria-pressed:ring-[#315f9e]">
+                className="overflow-hidden rounded-lg border border-[var(--app-line)] bg-white text-left text-sm font-semibold aria-pressed:ring-2 aria-pressed:ring-[var(--app-accent)]">
                 <span aria-hidden="true" className={cx("block aspect-video bg-cover bg-center", wallpaper === "portrait" ? "bg-[url(/wallpapers/alanna-portrait.webp)]" : "bg-[url(/wallpapers/coastal-dusk.webp)]")} />
                 <span className="block px-3 py-2">{wallpaper === "portrait" ? "Alanna Portrait" : "Coastal Dusk"}</span>
               </button>
             ))}
-          </div>
-        </Panel>
-        <Panel>
-          <label className="flex items-center justify-between gap-2 font-semibold">
+          </div> : <label className="flex items-center justify-between gap-3 rounded-xl border border-[var(--app-line)] bg-white p-4 text-sm font-medium">
             Dock magnification
-            <input type="checkbox" checked={prefs.magnification} onChange={(event) => setPrefs((current) => ({ ...current, magnification: event.target.checked }))} className="size-5 accent-[#315f9e]" />
-          </label>
-        </Panel>
+            <span className="app-switch">
+              <input type="checkbox" role="switch" checked={prefs.magnification} onChange={(event) => setPrefs((current) => ({ ...current, magnification: event.target.checked }))} />
+              <span aria-hidden="true" />
+            </span>
+          </label>}
+        </section>
       </div>
     </LibraryFrame>
   );
@@ -153,23 +179,28 @@ export function ActivityMonitor() {
   const windows = (Object.keys(state.wins) as AppId[]).filter((id) => state.wins[id].open).sort((a, b) => state.wins[b].z - state.wins[a].z);
   return (
     <LibraryFrame title="Activity Monitor">
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
-        <Panel className="flex items-center gap-3">
-          <Activity aria-hidden="true" className="size-6 text-[#315f9e]" />
-          <h2 className="font-semibold">{windows.length} open desktop {windows.length === 1 ? "window" : "windows"}</h2>
-        </Panel>
-        <ul aria-label="Open desktop windows" className="divide-y divide-[#e1e8f2] overflow-hidden rounded-xl border border-[#dbe4ef] bg-white">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table aria-label="Open windows" className="w-full border-collapse text-left text-sm">
+          <thead className="sticky top-0 border-b border-[var(--app-line)] bg-[var(--app-chrome)] text-xs text-[var(--app-muted)]">
+            <tr><th scope="col" className="px-3 py-2.5 font-semibold">Window</th><th scope="col" className="px-2 py-2.5 font-semibold">State</th><th scope="col" className="px-3 py-2.5 text-right font-semibold">Actions</th></tr>
+          </thead>
+          <tbody>
           {windows.map((id) => (
-            <li key={id} className="flex flex-wrap items-center gap-2 px-4 py-2">
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{APPS[id].title}</div>
-                <div className="text-xs text-[#50627b]">{state.wins[id].minimized ? "Minimized" : state.focused === id ? "Focused" : "Open"}</div>
-              </div>
-              <Action onClick={() => openApp(id)}>Show</Action>
-              {id !== "activity" && <Action aria-label={`Close ${APPS[id].title}`} onClick={() => closeApp(id)}>Close</Action>}
-            </li>
+            <tr key={id} className="even:bg-[#f1f5fa]">
+              <th scope="row" className="px-3 py-2 font-medium">{APPS[id].title}</th>
+              <td className="px-2 py-2 text-xs text-[var(--app-muted)]">{state.wins[id].minimized ? "Minimized" : state.focused === id ? "Focused" : "Open"}</td>
+              <td className="px-3 py-1.5"><div className="flex flex-wrap justify-end gap-1.5">
+                <Action aria-label={`Show ${APPS[id].title}`} onClick={() => openApp(id)}>Show</Action>
+                {id !== "activity" && <Action aria-label={`Close ${APPS[id].title}`} onClick={() => closeApp(id)}>Close</Action>}
+              </div></td>
+            </tr>
           ))}
-        </ul>
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-2 border-t border-[var(--app-line)] bg-[var(--app-chrome)] px-3 py-2 text-xs text-[var(--app-muted)]">
+        <Activity aria-hidden="true" className="size-4 text-[var(--app-accent)]" />
+        {windows.length} open {windows.length === 1 ? "window" : "windows"}
       </div>
     </LibraryFrame>
   );
@@ -195,21 +226,26 @@ export function DiskUtility() {
   }, [request]);
   return (
     <LibraryFrame title="Disk Utility" controls={<Action onClick={() => setRequest((value) => value + 1)}><RefreshCw className="size-4" />Refresh</Action>}>
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
-        <Panel>
-          <Database aria-hidden="true" className="mb-3 size-7 text-[#315f9e]" />
-          <h2 className="text-lg font-semibold">Portfolio browser storage</h2>
-          <p className="mt-1 text-sm text-[#50627b]">Browser estimates for the files and data saved by this site.</p>
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="Storage volumes" className="hidden @min-[530px]:flex">
+          <SourceHeading>Volumes</SourceHeading>
+          <span className="app-ref-row bg-[var(--app-selection)]"><HardDrive className="size-4" />Browser Storage</span>
+        </SourceRail>
+        <section className="min-h-0 min-w-0 flex-1 overflow-auto p-5">
+          <div className="mb-6 flex items-center gap-3">
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-[#b9c6d7] bg-linear-to-br from-white to-[#bccadd]"><HardDrive aria-hidden="true" className="size-6 text-[#37536f]" /></span>
+            <div><h2 className="text-lg font-semibold">Browser Storage</h2><p className="text-xs text-[var(--app-muted)]">Files and data saved by this site</p></div>
+          </div>
           {estimate && estimate !== "unavailable" && <>
-            <progress aria-label="Storage used" className="mt-4 h-2 w-full accent-[#315f9e]" value={estimate.usage ?? 0} max={estimate.quota || 1} />
-            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <progress aria-label="Storage used" className="storage-meter w-full" value={estimate.usage ?? 0} max={estimate.quota || 1} />
+            <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--app-line)] pt-4 text-sm">
               <div><dt className="text-[#50627b]">Used</dt><dd className="font-semibold">{bytes(estimate.usage ?? 0)}</dd></div>
               <div><dt className="text-[#50627b]">Quota</dt><dd className="font-semibold">{estimate.quota ? bytes(estimate.quota) : "Unavailable"}</dd></div>
             </dl>
           </>}
-        </Panel>
-        {estimate === "unavailable" && <Empty>This browser did not provide a storage estimate.</Empty>}
-        {estimate === null && <p role="status" className="text-sm">Reading storage estimate…</p>}
+          {estimate === "unavailable" && <Empty>This browser did not provide a storage estimate.</Empty>}
+          {estimate === null && <p role="status" className="text-sm">Reading storage estimate…</p>}
+        </section>
       </div>
     </LibraryFrame>
   );
@@ -232,17 +268,18 @@ export function FontBook() {
     <LibraryFrame title="Font Book" controls={<label className="flex items-center gap-2 text-sm font-semibold">
       Size <input type="range" aria-label="Font size" min="16" max="72" value={size} onChange={(event) => setSize(Number(event.target.value))} /> {size}px
     </label>}>
-      <div className="flex min-h-0 flex-1 flex-col @min-[510px]:flex-row">
-        <aside aria-label="Typefaces" className="max-h-32 shrink-0 space-y-1 overflow-auto border-[#dbe4ef] bg-[#e4edf8] p-3 @min-[510px]:max-h-none @min-[510px]:w-40 @min-[510px]:border-r">
-          {fonts.map((font) => <button type="button" key={font.name} aria-pressed={font === selected} onClick={() => setSelected(font)} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-white/65 aria-pressed:bg-white">{font.name}</button>)}
-        </aside>
-        <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="Typefaces">
+          <SourceHeading>All Fonts</SourceHeading>
+          {fonts.map((font) => <SourceItem key={font.name} icon={<Type className="size-4" />} selected={font === selected} onClick={() => setSelected(font)}>{font.name}</SourceItem>)}
+        </SourceRail>
+        <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
           <label className={label}>Preview text<input className={field} value={sample} onChange={(event) => setSample(event.target.value)} /></label>
-          <Panel className="mt-3">
-            <h2 className="mb-3 text-sm font-semibold text-[#50627b]">{selected.name}</h2>
+          <section className="mt-6 border-t border-[var(--app-line)] pt-4">
+            <h2 className="mb-3 text-xs font-semibold text-[var(--app-muted)]">{selected.name}</h2>
             <p className="leading-tight break-words" style={{ fontFamily: selected.family, fontSize: size }}>{sample}</p>
             <p className="mt-5 text-lg tracking-wide" style={{ fontFamily: selected.family }}>Aa Bb Cc Dd 0123456789</p>
-          </Panel>
+          </section>
         </div>
       </div>
     </LibraryFrame>

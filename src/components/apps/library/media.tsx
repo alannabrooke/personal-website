@@ -1,13 +1,13 @@
 "use client";
 
-import { AudioLines, Download, ExternalLink, Film, Headphones, Mic, Music2, Square, Video } from "lucide-react";
+import { AudioLines, Compass, Download, ExternalLink, Film, Grid2X2, Headphones, Library, Mic, Music2, Pause, Play, Square, Video, Volume2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { appCatalog, libraryAppIds } from "@/components/desktop/appCatalog";
 import { APPS } from "@/components/desktop/apps";
 import { useDesktop } from "@/components/desktop/DesktopContext";
 import { cx } from "@/lib/cx";
 import { useLibraryStorage } from "./storage";
-import { Action, downloadFile, Empty, externalAction, field, LibraryFrame, Panel } from "./ui";
+import { Action, downloadFile, Empty, externalAction, field, LibraryFrame, SourceHeading, SourceItem, SourceRail } from "./ui";
 
 const songs = [
   { name: "Low Tide", length: 0.38, notes: [57, 60, 64, 69, 64, 60, 55, 60], color: "#507391" },
@@ -67,29 +67,45 @@ export function Music() {
   };
 
   return (
-    <LibraryFrame title="Music">
-      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-auto p-4 @min-[610px]:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <Panel className="space-y-3">
-          <h2 className="font-semibold">Synth Sessions</h2>
-          <div className="grid gap-2">
-            {songs.map((entry, index) => <Action key={entry.name} primary={index === selected} aria-pressed={index === selected} className="justify-start" onClick={() => { pause(); setSelected(index); }}><Music2 className="size-4" />{entry.name}</Action>)}
+    <LibraryFrame title="Music" className="[--app-accent:#a13e62] [--app-rail:#f5eaf1]">
+      <div className="flex min-h-0 flex-1">
+        <SourceRail label="Music library" className="hidden @min-[530px]:flex">
+          <SourceHeading>Library</SourceHeading>
+          <span className="app-ref-row bg-[var(--app-selection)]"><Music2 className="size-4" />Synth Sessions</span>
+        </SourceRail>
+        <section className="min-h-0 min-w-0 flex-1 overflow-auto">
+          <div className="flex items-center gap-4 border-b border-[var(--app-line)] bg-linear-to-br from-[#f8e8ee] to-white px-4 py-5 @min-[600px]:px-6">
+            <div className="album-art size-[88px] shrink-0 @min-[600px]:size-[116px]" style={{ backgroundColor: song.color }}><AudioLines className="size-9" aria-hidden="true" /></div>
+            <div className="min-w-0">
+              <h2 className="text-2xl leading-tight font-bold tracking-tight @min-[600px]:text-3xl">Synth Sessions</h2>
+              <p className="mt-1 text-sm text-[var(--app-muted)]">{songs.length} tracks</p>
+            </div>
           </div>
-        </Panel>
-        <Panel className="space-y-3">
-          <div className="grid aspect-video place-items-center rounded-xl bg-[radial-gradient(ellipse_at_25%_20%,#ffffff40,transparent_70%)] text-white" style={{ backgroundColor: song.color }}>
-            <AudioLines className="size-14" aria-hidden="true" />
-          </div>
-          <h3 className="text-lg font-semibold">{song.name}</h3>
-          <div className="flex flex-wrap items-center gap-3">
-            <Action primary onClick={playing ? pause : play}>{playing ? "Pause" : "Play"}</Action>
-            <label className="flex gap-2 text-xs font-semibold">Volume<input type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => {
+          <ol className="divide-y divide-[var(--app-line)] p-2 @min-[600px]:p-3">
+            {songs.map((entry, index) => <li key={entry.name}>
+              <button type="button" aria-pressed={index === selected} onClick={() => { if (index !== selected) { pause(); setSelected(index); } }}
+                className="app-ref-row grid min-h-10 grid-cols-[20px_1fr_auto]">
+                <span className="text-xs text-[var(--app-muted)]">{index + 1}</span>
+                <span>{entry.name}</span><span className="text-xs text-[var(--app-muted)]">Loop</span>
+              </button>
+            </li>)}
+          </ol>
+          {error && <p role="status" className="px-4 py-2 text-sm">{error}</p>}
+        </section>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--app-line)] bg-[var(--app-chrome)] px-3 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="album-art size-8 shrink-0" style={{ backgroundColor: song.color }}><Music2 className="size-3.5" aria-hidden="true" /></span>
+          <strong className="truncate text-sm">{song.name}</strong>
+        </div>
+        <Action primary aria-label={playing ? "Pause" : "Play"} className="size-9 rounded-full p-0" onClick={playing ? pause : play}>{playing ? <Pause className="size-4" /> : <Play className="size-4" />}</Action>
+        <label className="flex flex-1 items-center justify-end gap-1.5"><Volume2 aria-hidden="true" className="size-4 text-[var(--app-muted)]" />
+          <input aria-label="Volume" type="range" className="w-[min(13cqw,92px)] accent-[var(--app-accent)]" min="0" max="1" step="0.01" value={volume} onChange={(event) => {
               const next = Number(event.target.value);
               if (gain.current) gain.current.gain.value = next;
               setVolume(next);
-            }} /></label>
-          </div>
-          {error && <p role="status" className="text-sm">{error}</p>}
-        </Panel>
+          }} />
+        </label>
       </div>
     </LibraryFrame>
   );
@@ -108,24 +124,28 @@ export function Podcasts() {
   const [playing, setPlaying] = useState(false);
   const visible = savedOnly ? shows.filter((show) => follows.includes(show.title)) : shows;
   return (
-    <LibraryFrame title="Podcasts" controls={<>
-      <Action primary={!savedOnly} aria-pressed={!savedOnly} onClick={() => setSavedOnly(false)}>Discover</Action>
-      <Action primary={savedOnly} aria-pressed={savedOnly} onClick={() => setSavedOnly(true)}>Following</Action>
-    </>}>
-      <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
-        {!visible.length && <Empty>Follow a show to find it here.</Empty>}
-        <div className="grid gap-3 @min-[510px]:grid-cols-2 @min-[680px]:grid-cols-3">
-          {visible.map((show) => <Panel key={show.title} className="space-y-2">
-            <span className="grid aspect-[3/2] place-items-center rounded-lg text-white" style={{ backgroundColor: show.color }}><Headphones aria-hidden="true" className="size-9" /></span>
+    <LibraryFrame title="Podcasts" className="[--app-accent:#70489c] [--app-rail:#f0eaf8]">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="Podcasts sections">
+          <SourceItem icon={<Compass className="size-4" />} selected={!savedOnly} onClick={() => setSavedOnly(false)}>Discover</SourceItem>
+          <SourceItem icon={<Library className="size-4" />} selected={savedOnly} onClick={() => setSavedOnly(true)}>Following</SourceItem>
+        </SourceRail>
+        <section className="min-h-0 min-w-0 flex-1 space-y-4 overflow-auto px-4 py-5 @min-[650px]:px-5">
+          <h2 className="text-2xl font-bold tracking-tight">{savedOnly ? "Following" : "Discover"}</h2>
+          {!visible.length && <Empty>Follow a show to find it here.</Empty>}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5 @min-[720px]:grid-cols-3">
+          {visible.map((show) => <article key={show.title} className="min-w-0 space-y-2">
+            <div className="album-art aspect-square" style={{ backgroundColor: show.color }}><Headphones aria-hidden="true" className="size-9" /></div>
             <h2 className="font-semibold">{show.title}</h2>
             <p className="text-xs text-[#50627b]">{show.detail}</p>
             <div className="flex flex-wrap gap-2">
               {show.title === "Design Details" ? <Action primary onClick={() => setPlaying(!playing)}>{playing ? "Close player" : "Listen"}</Action> : <a className={externalAction} href={show.link} target="_blank" rel="noopener noreferrer">Listen <ExternalLink className="size-3" /></a>}
               <Action aria-pressed={follows.includes(show.title)} onClick={() => setFollows((current) => current.includes(show.title) ? current.filter((item) => item !== show.title) : [...current, show.title])}>{follows.includes(show.title) ? "Following" : "Follow"}</Action>
             </div>
-          </Panel>)}
-        </div>
-        {playing && <iframe title="Design Details episode" className="h-52 w-full rounded-xl border-0" src="https://player.simplecast.com/d61307a2-7530-463b-bbdb-90036842edae?dark=false" />}
+          </article>)}
+          </div>
+          {playing && <iframe title="Design Details episode" className="h-52 w-full rounded-xl border-0" src="https://player.simplecast.com/d61307a2-7530-463b-bbdb-90036842edae?dark=false" />}
+        </section>
       </div>
     </LibraryFrame>
   );
@@ -147,16 +167,16 @@ export function TV() {
         event.target.value = "";
       }} />
     </>}>
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
-        {clip ? <>
-          <h2 className="font-semibold">{clip.title}</h2>
-          <video key={clip.url} controls playsInline aria-label={clip.title} src={clip.url} className="max-h-[calc(100%_-_2rem)] w-full rounded-xl bg-[#19283c]" />
-        </> : <Panel className="space-y-3">
-          <div className="grid aspect-[3/1] place-items-center rounded-xl bg-linear-to-br from-[#587770] to-[#254454] text-white"><Film aria-hidden="true" className="size-11" /></div>
-          <h2 className="font-semibold">Flower and Bee</h2>
-          <p className="text-sm text-[#50627b]">Sample clip from MDN.</p>
-          <Action primary onClick={() => setClip({ title: "Flower and Bee", url: flowerVideo })}>Watch sample</Action>
-        </Panel>}
+      <div className="tv-stage flex min-h-0 flex-1 flex-col justify-center overflow-auto text-white">
+        {clip ? <div className="flex min-h-0 flex-1 flex-col">
+          <h2 className="px-4 py-3 text-sm font-semibold">{clip.title}</h2>
+          <video key={clip.url} controls playsInline aria-label={clip.title} src={clip.url} className="min-h-0 w-full flex-1 bg-[#131820] object-contain" />
+        </div> : <section className="p-6 @min-[570px]:p-10">
+          <Film aria-hidden="true" className="mb-3 size-7 text-[#b5e2dc]" />
+          <h2 className="text-3xl leading-tight font-bold tracking-tight @min-[570px]:text-5xl">Flower and Bee</h2>
+          <p className="mt-2 text-sm text-white/75">Sample clip from MDN</p>
+          <Action className="mt-6 rounded-full" onClick={() => setClip({ title: "Flower and Bee", url: flowerVideo })}><Play className="size-4" />Watch sample</Action>
+        </section>}
       </div>
     </LibraryFrame>
   );
@@ -173,44 +193,65 @@ export function Books() {
   const [size, setSize] = useLibraryStorage("book-text-size", 20);
   const book = active === null ? null : books[active];
   return (
-    <LibraryFrame title="Books" controls={book && <>
+    <LibraryFrame title="Books" className="[--app-accent:#895338] [--app-rail:#f4ece4]" controls={book && <>
       <Action onClick={() => setActive(null)}>Library</Action>
       <Action aria-label="Decrease text size" disabled={size <= 14} onClick={() => setSize((value) => value - 2)}>A−</Action>
       <Action aria-label="Increase text size" disabled={size >= 32} onClick={() => setSize((value) => value + 2)}>A+</Action>
     </>}>
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        {book ? <article className="mx-auto max-w-lg rounded-xl border border-[#e1dbd2] bg-[#fffaf2] p-6 font-serif">
+      <div className="flex min-h-0 flex-1 bg-[#faf6ef]">
+        {!book && <SourceRail label="Books library" className="hidden @min-[530px]:flex">
+          <SourceHeading>Library</SourceHeading>
+          <span className="app-ref-row bg-[var(--app-selection)]"><Library className="size-4" />All Books</span>
+        </SourceRail>}
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto px-4 py-5 @min-[600px]:px-7">
+        {book ? <article className="mx-auto min-h-full max-w-lg bg-[#fffdf8] p-6 font-serif shadow-[0_0_20px_#6b4c3910] @min-[600px]:p-10">
           <h2 className="mb-4 text-3xl font-semibold">{book.title}</h2>
           <p className="leading-relaxed" style={{ fontSize: size }}>{book.text}</p>
-        </article> : <div className="grid grid-cols-2 gap-4 @min-[510px]:grid-cols-3">
-          {books.map((item, index) => <button key={item.title} type="button" className="rounded-xl border border-[#dbe4ef] bg-white p-3 text-left hover:border-[#7396c8]" onClick={() => setActive(index)}>
-            <span className="grid aspect-[4/5] place-items-center rounded-lg p-2 text-center font-serif text-xl text-white" style={{ backgroundColor: item.color }}>{item.title}</span>
+        </article> : <>
+          <h2 className="mb-4 text-2xl font-bold tracking-tight">All Books</h2>
+          <div className="grid grid-cols-2 gap-5 @min-[650px]:grid-cols-3">
+          {books.map((item, index) => <button key={item.title} type="button" className="group rounded-md text-left focus-visible:outline-offset-4 focus-visible:outline-[var(--app-accent)]" onClick={() => setActive(index)}>
+            <span className="book-cover grid aspect-[3/4] place-items-center p-3 text-center font-serif text-xl text-white group-hover:brightness-110" style={{ backgroundColor: item.color }}>{item.title}</span>
             <span className="mt-2 block text-xs text-[#50627b]">{item.author}</span>
           </button>)}
-        </div>}
+          </div>
+        </>}
+        </div>
       </div>
     </LibraryFrame>
   );
 }
 
+const storeGroups = ["All Apps", ...new Set(libraryAppIds.map((id) => appCatalog[id].group))] as const;
+
 export function AppStore() {
   const [search, setSearch] = useState("");
+  const [group, setGroup] = useState<(typeof storeGroups)[number]>("All Apps");
   const { openApp, closeApp } = useDesktop();
-  const items = libraryAppIds.filter((id) => id !== "appstore" && `${appCatalog[id].title} ${appCatalog[id].keywords}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const query = search.trim().toLowerCase();
+  const items = libraryAppIds.filter((id) => id !== "appstore"
+    && (group === "All Apps" || appCatalog[id].group === group)
+    && `${appCatalog[id].title} ${appCatalog[id].keywords}`.toLowerCase().includes(query));
   return (
     <LibraryFrame title="App Store" controls={<input aria-label="Search the App Store" placeholder="Search desktop apps" className={cx(field, "max-w-72")} value={search} onChange={(event) => setSearch(event.target.value)} />}>
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        {!items.length ? <Empty>No apps found.</Empty> : <ul className="grid gap-2 @min-[510px]:grid-cols-2">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="App Store categories">
+          {storeGroups.map((item) => <SourceItem key={item} icon={<Grid2X2 className="size-4" />} selected={item === group} onClick={() => setGroup(item)}>{item}</SourceItem>)}
+        </SourceRail>
+        <section className="min-h-0 min-w-0 flex-1 overflow-auto px-4 py-5">
+          <h2 className="mb-3 text-2xl font-bold tracking-tight">{group}</h2>
+          {!items.length ? <Empty>No apps found.</Empty> : <ul className="grid gap-x-4 @min-[740px]:grid-cols-2">
           {items.map((id) => {
             const { Icon } = APPS[id];
             const { title, group } = appCatalog[id];
-            return <li key={id} className="flex items-center gap-3 rounded-xl border border-[#dbe4ef] bg-white p-2">
+            return <li key={id} className="flex items-center gap-3 border-b border-[var(--app-line)] px-1 py-2.5">
               <span className="size-11 shrink-0"><Icon /></span>
               <div className="min-w-0 flex-1"><h2 className="truncate text-sm font-semibold">{title}</h2><p className="text-xs text-[#50627b]">{group}</p></div>
-              <Action aria-label={`Open ${title}`} onClick={() => { closeApp("appstore"); openApp(id); }}>Open</Action>
+              <Action className="rounded-full" aria-label={`Open ${title}`} onClick={() => { closeApp("appstore"); openApp(id); }}>Open</Action>
             </li>;
           })}
-        </ul>}
+          </ul>}
+        </section>
       </div>
     </LibraryFrame>
   );
@@ -247,18 +288,25 @@ export function FaceTime() {
   };
 
   return (
-    <LibraryFrame title="FaceTime" controls={<>
-      <Action primary disabled={pending} onClick={running ? () => {
-        camera.current?.getTracks().forEach((track) => track.stop());
-        camera.current = null;
-        if (video.current) video.current.srcObject = null;
-        setRunning(false);
-      } : start}><Video className="size-4" />{pending ? "Starting camera…" : running ? "Stop preview" : "Start camera preview"}</Action>
-      <span className="text-xs text-[#50627b]">Local preview</span>
-    </>}>
-      <div className="relative m-4 grid min-h-0 flex-1 place-items-center overflow-hidden rounded-xl bg-[#182c3f] p-4 text-center text-white">
-        <video ref={video} autoPlay muted playsInline aria-label="Camera preview" className={cx("absolute size-full -scale-x-100 object-cover", !running && "invisible")} />
-        {!running && <div><Video aria-hidden="true" className="mx-auto mb-3 size-9" /><p className="text-sm" role="status">{error || "Your camera preview appears here."}</p></div>}
+    <LibraryFrame title="FaceTime" className="[--app-accent:#30634c] [--app-rail:#e9f2ed]">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="FaceTime camera" className="justify-center @min-[530px]:justify-start">
+          <SourceHeading>Video</SourceHeading>
+          <Action primary disabled={pending} className="grow @min-[530px]:grow-0" onClick={running ? () => {
+            camera.current?.getTracks().forEach((track) => track.stop());
+            camera.current = null;
+            if (video.current) video.current.srcObject = null;
+            setRunning(false);
+          } : start}><Video className="size-4" />{pending ? "Starting camera…" : running ? "Stop preview" : "Start camera preview"}</Action>
+        </SourceRail>
+        <section aria-label="Local preview" className="relative grid min-h-0 flex-1 place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_20%,#324f52,#192a34_70%)] p-4 text-center text-white">
+          <video ref={video} autoPlay muted playsInline aria-label="Camera preview" className={cx("absolute size-full -scale-x-100 object-cover", !running && "invisible")} />
+          {!running && <div>
+            <span className="mx-auto mb-3 grid size-14 place-items-center rounded-2xl border border-white/15 bg-white/8"><Video aria-hidden="true" className="size-7 text-[#a6debd]" /></span>
+            <h2 className="text-lg font-semibold">Local preview</h2>
+            <p className="mt-1 text-sm text-white/80" role="status">{error || "Your camera preview appears here."}</p>
+          </div>}
+        </section>
       </div>
     </LibraryFrame>
   );
@@ -287,8 +335,44 @@ async function memoStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStor
 
 function MemoPlayer({ memo }: { memo: Memo }) {
   const [url, setUrl] = useState("");
+  const [peaks, setPeaks] = useState<number[]>([]);
+  const [progress, setProgress] = useState(0);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
-  return url ? <audio autoPlay controls className="w-full" src={url} aria-label={memo.name} /> : <Action onClick={() => setUrl(URL.createObjectURL(memo.blob))}>Play recording</Action>;
+  useEffect(() => {
+    let active = true;
+    const loadWave = async () => {
+      const decoder = new OfflineAudioContext(1, 1, 44100);
+      const audio = await decoder.decodeAudioData(await memo.blob.arrayBuffer());
+      if (!active) return;
+      const data = audio.getChannelData(0);
+      const binSize = Math.max(1, Math.ceil(data.length / 64));
+      const sampleStep = Math.max(1, Math.floor(binSize / 96));
+      const values = Array.from({ length: 64 }, (_, index) => {
+        let peak = 0;
+        const start = index * binSize;
+        const end = Math.min(start + binSize, data.length);
+        for (let i = start; i < end; i += sampleStep) peak = Math.max(peak, Math.abs(data[i]));
+        return peak;
+      });
+      const max = Math.max(.05, ...values);
+      setPeaks(values.map((peak) => 2 + 30 * peak / max));
+    };
+    void loadWave().catch(() => { /* The native player can still handle formats the waveform decoder cannot read. */ });
+    return () => { active = false; };
+  }, [memo.blob]);
+
+  return <div className="grid justify-items-center gap-3">
+    {peaks.length > 0 && <svg aria-hidden="true" className="h-20 w-full" viewBox="0 0 320 72">
+      {peaks.map((peak, index) => (
+        <line key={index} x1={index * 5 + 2.5} x2={index * 5 + 2.5} y1={36 - peak} y2={36 + peak}
+          stroke="var(--app-accent)" strokeOpacity={index / peaks.length < progress ? 1 : .55} strokeWidth={2.5} strokeLinecap="round" />
+      ))}
+    </svg>}
+    {url ? <audio autoPlay controls className="w-full" src={url} aria-label={memo.name} onTimeUpdate={(event) => {
+      const { currentTime, duration } = event.currentTarget;
+      setProgress(Number.isFinite(duration) && duration > 0 ? currentTime / duration : 0);
+    }} /> : <Action primary onClick={() => setUrl(URL.createObjectURL(memo.blob))}><Play className="size-4" />Play recording</Action>}
+  </div>;
 }
 
 export function VoiceMemos() {
@@ -349,17 +433,19 @@ export function VoiceMemos() {
   };
 
   return (
-    <LibraryFrame title="Voice Memos" controls={<>
-      <Action primary disabled={pending} onClick={recording ? () => { recorder.current?.stop(); setRecording(false); } : record}>
-        {recording ? <Square className="size-4" /> : <Mic className="size-4" />}{pending ? "Starting…" : recording ? "Stop recording" : "Record"}
-      </Action>
-      {recording && <span role="status" className="text-sm font-semibold text-[#aa4a4a]">Recording</span>}
-    </>}>
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
-        {notice && <p role="status" className="text-sm">{notice}</p>}
-        {!memo ? <Empty>No recordings yet.</Empty> : <>
-          <div className="flex flex-wrap gap-2">{memos.map((item) => <Action key={item.id} primary={item.id === memo.id} onClick={() => setSelected(item.id)}>{item.name}</Action>)}</div>
-          <Panel className="space-y-3">
+    <LibraryFrame title="Voice Memos" className="[--app-accent:#ac4053] [--app-rail:#f3edf1]">
+      <div className="flex min-h-0 flex-1 flex-col @min-[530px]:flex-row">
+        <SourceRail label="Recordings" className={cx(!memos.length && "hidden @min-[530px]:flex")}>
+          <SourceHeading>Recordings</SourceHeading>
+          {!memos.length && <p className="px-2 py-2 text-xs text-[var(--app-muted)]">No recordings yet</p>}
+          {memos.map((item) => <SourceItem key={item.id} icon={<AudioLines className="size-4" />} selected={item.id === memo?.id} onClick={() => setSelected(item.id)}>{item.name}</SourceItem>)}
+        </SourceRail>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#fbf9fc]">
+          <section className="grid min-h-0 flex-1 place-items-center overflow-auto p-5">
+          {!memo || recording ? <div className="text-center">
+            <AudioLines aria-hidden="true" className={cx("mx-auto mb-3 size-10 text-[var(--app-accent)]", recording && "motion-safe:animate-pulse")} />
+            <p role="status" className="font-semibold">{recording ? "Recording…" : "No recording selected"}</p>
+          </div> : <div className="w-full max-w-md space-y-4">
             <h2 className="font-semibold">{memo.name}</h2>
             <MemoPlayer key={memo.id} memo={memo} />
             <div className="flex flex-wrap gap-2">
@@ -373,8 +459,15 @@ export function VoiceMemos() {
                 }
               }}>Delete</Action>
             </div>
-          </Panel>
-        </>}
+          </div>}
+          </section>
+          <footer className="grid shrink-0 justify-items-center gap-2 border-t border-[var(--app-line)] bg-[var(--app-chrome)] p-3">
+            {notice && <p role="status" className="text-center text-sm">{notice}</p>}
+            <Action primary disabled={pending} onClick={recording ? () => { recorder.current?.stop(); setRecording(false); } : record} className="rounded-full px-4">
+              {recording ? <Square className="size-4" /> : <Mic className="size-4" />}{pending ? "Starting…" : recording ? "Stop recording" : "Record"}
+            </Action>
+          </footer>
+        </div>
       </div>
     </LibraryFrame>
   );

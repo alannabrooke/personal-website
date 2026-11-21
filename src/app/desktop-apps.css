@@ -166,6 +166,15 @@
   padding-left: 12px;
 }
 
+.phone-window :is(input:not([type="range"], [type="checkbox"], [type="radio"], [type="color"]), textarea, select) {
+  font-size: max(16px, 1em);
+}
+
+.phone-window .app-toolbar button {
+  min-width: 35px;
+  min-height: 35px;
+}
+
 .phone-window .app-ref-toolbar {
   min-height: 0;
   padding: 7px 12px;
@@ -340,4 +349,159 @@
   justify-content: space-around;
   border-top: 1px solid var(--app-line);
   border-bottom: 0;
+}
+
+@layer components {
+  .calculator-app {
+    --app-paper: #242831;
+    --app-chrome: #292d36;
+    --app-ink: #fff;
+    --app-line: #ffffff18;
+    background: linear-gradient(155deg, #353b47, var(--app-paper) 54%);
+  }
+
+  .calculator-key {
+    background: #434a57;
+    box-shadow: inset 0 1px 0 #ffffff18;
+  }
+
+  .calculator-function { background: #616a78; }
+  .calculator-operator { color: #352412; background: #f5b667; }
+  .calculator-key:hover { filter: brightness(1.12); }
+  .calculator-key:active { filter: brightness(.86); }
+
+  .clock-face {
+    position: relative;
+    width: clamp(65px, 22cqw, 104px);
+    aspect-ratio: 1;
+    color: #30303a;
+    background: linear-gradient(155deg, #fff, #e9e6e0);
+    border: 1px solid #342d251e;
+    border-radius: 50%;
+    box-shadow: 0 3px 10px #342d2518, inset 0 1px 3px #ffffff55;
+  }
+
+  .clock-face[data-night="true"] {
+    color: #f4f1e8;
+    background: linear-gradient(155deg, #4b4c59, #242632);
+  }
+
+  .clock-tick {
+    position: absolute;
+    inset: 7% calc(50% - .75px);
+    transform: rotate(var(--clock-angle));
+  }
+
+  .clock-tick::before {
+    display: block;
+    height: 6%;
+    background: currentColor;
+    border-radius: 2px;
+    content: "";
+    opacity: .7;
+  }
+
+  .clock-hand {
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    width: 2px;
+    background: currentColor;
+    border-radius: 3px;
+    transform: translateX(-50%) rotate(var(--clock-angle));
+    transform-origin: center bottom;
+  }
+
+  .clock-hour { height: 23%; width: 3px; }
+  .clock-minute { height: 33%; }
+  .clock-second { height: 37%; width: 1px; color: #d68545; }
+
+  .clock-face::after {
+    position: absolute;
+    inset: calc(50% - 2px);
+    background: #d68545;
+    border-radius: 50%;
+    content: "";
+  }
+
+  .app-switch {
+    position: relative;
+    display: grid;
+    width: 42px;
+    height: 24px;
+    flex: none;
+    align-items: center;
+  }
+
+  .app-switch input {
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    background: #82878e;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+
+  .app-switch input:checked { background: var(--app-accent); }
+  .app-switch input:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+
+  .app-switch > span {
+    position: absolute;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px #0004;
+    pointer-events: none;
+  }
+
+  .app-switch input:checked + span { transform: translateX(18px); }
+
+  .storage-meter {
+    appearance: none;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #e8edf4;
+    color: var(--app-accent);
+  }
+
+  .storage-meter::-webkit-progress-bar { background: #e8edf4; }
+  .storage-meter::-webkit-progress-value { background: var(--app-accent); }
+  .storage-meter::-moz-progress-bar { background: var(--app-accent); }
+
+  .album-art {
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background-image: radial-gradient(ellipse at 18% 18%, #ffffff62, transparent 65%),
+      repeating-radial-gradient(ellipse at 82% 80%, transparent 0 8px, #ffffff16 9px 10px),
+      linear-gradient(140deg, transparent 40%, #14142c50);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 1px #ffffff50;
+  }
+
+  .book-cover {
+    border-radius: 3px 10px 10px 3px;
+    background-image: linear-gradient(90deg, #0005 0 4px, #ffffff25 5px 7px, transparent 8px),
+      radial-gradient(ellipse at top right, #ffffff2b, transparent 75%);
+    box-shadow: 2px 3px 7px #442a2930, inset -2px -2px 0 #0002;
+    text-shadow: 0 1px 2px #0005;
+  }
+
+  .tv-stage {
+    background: linear-gradient(90deg, #212c35, #252c3ae0 25%, #20232b20),
+      radial-gradient(ellipse at 80% 65%, #89aaa0 4%, #4b776f 35%, #2f4b55 60%, #242b35 100%);
+  }
+}
+
+.phone-window .calculator-app {
+  --app-paper: #222732;
+}
+
+.phone-window .calculator-key {
+  min-height: 45px;
+  border-radius: 24px;
+  font-size: 1.6rem;
 }

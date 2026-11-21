@@ -8,10 +8,13 @@ import { useNowSeconds } from "./hooks";
 import type { AppId } from "./types";
 
 const dockApps: AppId[] = ["safari", "messages", "mail", "photos"];
-const homeApps: AppId[] = [
+const firstApps: AppId[] = [
   "calendar", "preview", "finder", "notes", "weather", "maps", "clock", "reminders",
   "contacts", "facetime", "music", "podcasts", "tv", "books", "settings", "launchpad",
-  ...libraryAppIds.filter((id) => !["safari", "messages", "calendar", "weather", "maps", "clock", "reminders", "contacts", "facetime", "music", "podcasts", "tv", "books", "settings"].includes(id)),
+];
+const homeApps: AppId[] = [
+  ...firstApps,
+  ...libraryAppIds.filter((id) => !firstApps.includes(id) && !dockApps.includes(id)),
   "terminal", "linkedin", "trash", "about",
 ];
 const labels: Partial<Record<AppId, string>> = { finder: "Files", settings: "Settings", linkedin: "LinkedIn", about: "About", trash: "Trash" };
