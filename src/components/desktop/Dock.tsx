@@ -1,26 +1,25 @@
 "use client";
 
 import { useRef, useState, type ComponentType } from "react";
-import { socials } from "@/data/content";
+import { githubLink } from "@/data/content";
 import { cx } from "@/lib/cx";
+import { useDesktopPreferences } from "@/components/apps/library/storage";
 import { APPS } from "./apps";
 import { useDesktop } from "./DesktopContext";
-import { GitHubIcon, LinkedInIcon } from "./icons";
+import { useViewport } from "./hooks";
+import { GitHubIcon } from "./icons";
 import type { AppId } from "./types";
 
-const DOCK_APPS: AppId[] = ["finder", "notes", "mail", "preview", "terminal"];
+const DOCK_APPS: AppId[] = ["finder", "launchpad", "notes", "mail", "preview", "photos", "terminal"];
 
-const LINK_ICONS: Record<string, ComponentType> = {
-  GitHub: GitHubIcon,
-  LinkedIn: LinkedInIcon,
-};
-
-const BASE = 50;
+const BASE = 57;
 const MAX = 78;
 const RANGE = 140;
 
 export function Dock() {
   const { state, openApp, isMobile } = useDesktop();
+  const [preferences] = useDesktopPreferences();
+  const { w: viewportWidth } = useViewport();
   const [mouseX, setMouseX] = useState<number | null>(null);
   const [centers, setCenters] = useState<Record<string, number>>({});
   const navRef = useRef<HTMLElement>(null);
@@ -33,72 +32,63 @@ export function Dock() {
     });
     setCenters(next);
   };
-  const base = isMobile ? 44 : BASE;
-  const magnify = isMobile ? null : mouseX;
+  const base = isMobile ? Math.max(24, Math.min(44, Math.floor((viewportWidth - 78) / (DOCK_APPS.length + 2)))) : BASE;
+  const magnify = isMobile || !preferences.magnification ? null : mouseX;
 
-  const links = isMobile ? [] : socials.filter((s) => LINK_ICONS[s.label]);
+  const appItem = (id: AppId, label = APPS[id].name) => {
+    const app = APPS[id];
+    const win = state.wins[id];
+    return (
+      <DockItem
+        key={id}
+        dockKey={id}
+        center={centers[id]}
+        label={label}
+        Icon={app.Icon}
+        base={base}
+        mouseX={magnify}
+        running={win.open}
+        bounceKey={win.launch}
+        onClick={() => openApp(id)}
+      />
+    );
+  };
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-1.5 z-[9000] flex justify-center">
+    <div className="pointer-events-none fixed inset-x-0 bottom-2.5 z-[9000] flex justify-center">
       <nav
         ref={navRef}
         aria-label="Dock"
         onMouseEnter={measure}
         onMouseMove={(e) => setMouseX(e.clientX)}
         onMouseLeave={() => setMouseX(null)}
-        className="pointer-events-auto flex items-end gap-1 rounded-[22px] border border-white/25 bg-white/20 px-1.5 pb-1.5 pt-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.25),inset_0_0_0_0.5px_rgba(255,255,255,0.3)] backdrop-blur-2xl"
+        className="dock-glass pointer-events-auto flex items-end gap-1.5 rounded-[23px] px-2.5 pt-2 pb-3"
       >
-        {DOCK_APPS.map((id) => {
-          const app = APPS[id];
-          const w = state.wins[id];
-          return (
+        {DOCK_APPS.map((id) => appItem(id))}
+        {!isMobile && (
+          <>
+            <Divider />
             <DockItem
-              key={id}
-              dockKey={id}
-              center={centers[id]}
-              label={app.name}
-              Icon={app.Icon}
+              dockKey="github"
+              center={centers.github}
+              label={githubLink.label}
+              Icon={GitHubIcon}
               base={base}
               mouseX={magnify}
-              running={w.open}
-              bounceKey={w.launch}
-              onClick={() => openApp(id)}
+              href={githubLink.href}
             />
-          );
-        })}
-
-        {links.length > 0 && <Divider />}
-        {links.map((s) => (
-          <DockItem
-            key={s.label}
-            dockKey={s.label}
-            center={centers[s.label]}
-            label={s.label}
-            Icon={LINK_ICONS[s.label]}
-            base={base}
-            mouseX={magnify}
-            href={s.href}
-          />
-        ))}
-
+          </>
+        )}
+        {appItem("linkedin", "LinkedIn")}
         <Divider />
-        <DockItem
-          dockKey="trash"
-          center={centers.trash}
-          label="Trash"
-          Icon={APPS.trash.Icon}
-          base={base}
-          mouseX={magnify}
-          running={state.wins.trash.open}
-          onClick={() => openApp("trash")}
-        />
+        {appItem("trash", "Trash")}
       </nav>
     </div>
   );
 }
 
 function Divider() {
-  return <div className="mx-1 mb-1 h-[42px] w-px self-end bg-black/20 shadow-[1px_0_0_rgba(255,255,255,0.25)]" />;
+  return <div className="mx-0.5 mb-1 h-10 w-px shrink-0 self-end bg-white/25" />;
 }
 
 type ItemProps = {
@@ -125,19 +115,19 @@ function DockItem({ dockKey, center, label, Icon, base, mouseX, running, bounceK
 
   const content = (
     <>
-      <span className="pointer-events-none absolute -top-9 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-black/10 bg-[#ececec]/90 px-2.5 py-[3px] text-[13px] text-black/85 shadow-md backdrop-blur group-hover:block">
+      <span className="dock-tooltip pointer-events-none absolute -top-9 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-[3px] text-[13px] font-medium group-hover:block group-focus-visible:block">
         {label}
       </span>
       <div key={bounceKey} className={cx("size-full", bounceKey ? "animate-dock-bounce" : "")}>
         <Icon />
       </div>
-      {running && <span className="absolute -bottom-[5px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-black/70" />}
+      {running && <span className="absolute -bottom-[6px] left-1/2 size-1 -translate-x-1/2 rounded-full bg-white/90" />}
     </>
   );
 
   const common = {
     "aria-label": label,
-    className: "group relative block size-full outline-none",
+    className: "group relative block size-full rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
   };
 
   return (

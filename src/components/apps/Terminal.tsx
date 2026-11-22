@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useDesktop } from "@/components/desktop/DesktopContext";
 import type { AppId } from "@/components/desktop/types";
+import { useWindowCommands } from "@/components/desktop/windowCommands";
 import { notes, profile, projects, resume, socials } from "@/data/content";
 
-type Line = { id: number; kind: "in" | "out"; content: ReactNode };
-
-const PROMPT = `${profile.handle}@${profile.host} ~ %`;
+type Line = { id: number; content: ReactNode; prompt?: string };
+type Directory = "~" | "~/Projects";
+const CLEAR = Symbol("clear");
 
 const OPENABLE: Record<string, AppId> = {
   finder: "finder",
@@ -16,26 +17,26 @@ const OPENABLE: Record<string, AppId> = {
   mail: "mail",
   preview: "preview",
   resume: "preview",
+  photos: "photos",
   trash: "trash",
 };
 
-const COMMANDS = ["help", "about", "whoami", "projects", "skills", "contact", "socials", "resume", "open", "ls", "cat", "date", "echo", "clear", "exit"];
+const COMMANDS = ["help", "about", "whoami", "projects", "skills", "contact", "socials", "resume", "open", "ls", "cat", "pwd", "cd", "date", "echo", "clear", "exit"];
 
 let nextId = 0;
-const line = (kind: Line["kind"], content: ReactNode): Line => ({ id: nextId++, kind, content });
+const line = (content: ReactNode, prompt?: string): Line => ({ id: nextId++, content, prompt });
 
 export function Terminal() {
   const { openApp, closeApp } = useDesktop();
+  const [directory, setDirectory] = useState<Directory>("~");
+  const prompt = `${profile.handle}@${profile.host} ${directory === "~" ? "~" : "Projects"} %`;
   const [lines, setLines] = useState<Line[]>(() => [
-    line(
-      "out",
-      `Last login: ${new Date().toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })} on ttys000`,
-    ),
-    line("out", <>Welcome! Type <Cmd>help</Cmd> to see what you can do.</>),
+    line(<>Portfolio shell. Type <Cmd>help</Cmd> for commands.</>),
   ]);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [scratch, setScratch] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -43,9 +44,11 @@ export function Terminal() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [lines]);
 
-  const run = (raw: string): ReactNode | "clear" | null => {
+  const run = (raw: string): ReactNode | typeof CLEAR | null => {
     const [cmd = "", ...args] = raw.trim().split(/\s+/);
     const arg = args.join(" ");
+    const path = arg.replace(/^(['"])(.*)\1$/, "$2");
+    const resolvedPath = path.toLowerCase().replace(/\/$/, "");
     switch (cmd.toLowerCase()) {
       case "":
         return null;
@@ -59,8 +62,9 @@ export function Terminal() {
               ["contact", "how to reach me"],
               ["socials", "where to find me"],
               ["resume", "open my résumé"],
-              ["open <app>", "finder, notes, mail, preview, trash"],
-              ["ls / cat", "look around"],
+              ["open <app>", "finder, notes, mail, preview, photos, trash"],
+              ["pwd / ls / cd", "browse the portfolio files"],
+              ["cat <file>", "read a portfolio file"],
               ["clear", "clear the screen"],
               ["exit", "close Terminal"],
             ].map(([c, d]) => (
@@ -113,27 +117,51 @@ export function Terminal() {
         return "Opening Résumé.pdf…";
       case "open": {
         const target = OPENABLE[arg.toLowerCase()];
-        if (!target) return `open: unknown app "${arg}". Try: finder, notes, mail, preview, trash`;
+        if (!target) return `open: unknown app "${arg}". Try: finder, notes, mail, preview, photos, trash`;
         openApp(target);
         return null;
       }
-      case "ls":
+      case "pwd":
+        return directory;
+      case "cd":
+        if (["", "~", "..", "/"].includes(resolvedPath)) {
+          setDirectory("~");
+          return null;
+        }
+        if (["projects", "~/projects", "/projects", "./projects"].includes(resolvedPath)) {
+          setDirectory("~/Projects");
+          return null;
+        }
+        if (resolvedPath === ".") return null;
+        return `cd: no such directory: ${path}`;
+      case "ls": {
+        const target = resolvedPath === "" || resolvedPath === "." ? directory
+          : ["projects", "~/projects", "/projects", "./projects"].includes(resolvedPath) ? "~/Projects"
+          : ["~", "..", "/"].includes(resolvedPath) ? "~" : null;
+        if (target === "~/Projects") return projects.map((project) => project.name).join("\n");
+        if (!target) return `ls: no such file or directory: ${path}`;
         return (
           <span>
             <span className="text-[#7cc4ff]">Projects/</span>    About Me.txt    Résumé.pdf
           </span>
         );
+      }
       case "cat":
-        if (/about/i.test(arg)) return notes[0].body.join("\n");
-        if (/r[eé]sum[eé]/i.test(arg)) return "cat: binary file. Try: resume";
-        if (/projects/i.test(arg)) return "cat: Projects: Is a directory";
-        return arg ? `cat: ${arg}: No such file or directory` : "usage: cat <file>";
+        if (["about", "about me.txt", "~/about me.txt"].includes(resolvedPath)) return notes[0].body.join("\n");
+        if (/r[eé]sum[eé]/i.test(path)) return "cat: binary file. Try: resume";
+        if (["projects", "~/projects"].includes(resolvedPath)) return "cat: Projects: Is a directory";
+        if (directory === "~/Projects" || resolvedPath.startsWith("projects/")) {
+          const filename = resolvedPath.replace(/^projects\//, "");
+          const project = projects.find((item) => item.name.toLowerCase() === filename);
+          if (project) return project.description;
+        }
+        return path ? `cat: ${path}: No such file or directory` : "usage: cat <file>";
       case "date":
         return new Date().toString();
       case "echo":
         return arg;
       case "clear":
-        return "clear";
+        return CLEAR;
       case "exit":
         closeApp("terminal");
         return null;
@@ -144,17 +172,26 @@ export function Terminal() {
     }
   };
 
+  useWindowCommands("terminal", (command) => {
+    if (command === "clear") setLines([]);
+    if (command === "terminal-help") {
+      const help = run("help");
+      if (help !== CLEAR) setLines((current) => [...current, line(help)]);
+    }
+    inputRef.current?.focus();
+  });
+
   const submit = () => {
     const raw = input;
     const out = run(raw);
     setInput("");
     setCursor(null);
     if (raw.trim()) setHistory((h) => [...h, raw]);
-    if (out === "clear") {
+    if (out === CLEAR) {
       setLines([]);
       return;
     }
-    setLines((ls) => [...ls, line("in", raw), ...(out !== null ? [line("out", out)] : [])]);
+    setLines((ls) => [...ls, line(raw, prompt), ...(out !== null ? [line(out)] : [])]);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -163,6 +200,7 @@ export function Terminal() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (!history.length) return;
+      if (cursor === null) setScratch(input);
       const i = cursor === null ? history.length - 1 : Math.max(0, cursor - 1);
       setCursor(i);
       setInput(history[i]);
@@ -172,15 +210,26 @@ export function Terminal() {
       const i = cursor + 1;
       if (i >= history.length) {
         setCursor(null);
-        setInput("");
+        setInput(scratch);
       } else {
         setCursor(i);
         setInput(history[i]);
       }
     } else if (e.key === "Tab") {
+      const typed = input.toLowerCase();
+      if (!typed.trim()) return;
+      const suggestions = typed.startsWith("open ") ? Object.keys(OPENABLE).map((name) => `open ${name}`)
+        : typed.startsWith("cd ") ? ["cd Projects"] : COMMANDS;
+      const matches = suggestions.filter((name) => name.toLowerCase().startsWith(typed));
+      if (matches.length === 1) {
+        e.preventDefault();
+        setInput(matches[0] + " ");
+      }
+    } else if (e.key === "c" && e.ctrlKey && !window.getSelection()?.toString()) {
       e.preventDefault();
-      const match = COMMANDS.filter((c) => c.startsWith(input.trim()));
-      if (input.trim() && match.length === 1) setInput(match[0] + " ");
+      setLines((current) => [...current, line(input + "^C", prompt)]);
+      setInput("");
+      setCursor(null);
     } else if (e.key === "l" && e.ctrlKey) {
       e.preventDefault();
       setLines([]);
@@ -189,16 +238,16 @@ export function Terminal() {
 
   return (
     <div
-      className="h-full select-text overflow-y-auto px-2 py-1.5 font-mono text-[12.5px] leading-[1.45] text-[#e6e6e6]"
+      className="h-full select-text overflow-y-auto bg-[#161b26] px-3 py-2.5 font-mono text-[12.5px] leading-[1.55] text-[#e4eaf5]"
       onClick={() => {
         if (!window.getSelection()?.toString()) inputRef.current?.focus();
       }}
     >
       {lines.map((l) => (
         <div key={l.id} className="whitespace-pre-wrap break-words">
-          {l.kind === "in" ? (
+          {l.prompt ? (
             <>
-              <span className="text-white/90">{PROMPT}</span> {l.content}
+              <span className="text-[#bde8df]">{l.prompt}</span> {l.content}
             </>
           ) : (
             l.content
@@ -206,7 +255,7 @@ export function Terminal() {
         </div>
       ))}
       <div className="flex">
-        <span className="whitespace-pre text-white/90">{PROMPT} </span>
+        <span className="whitespace-pre text-[#bde8df]">{prompt} </span>
         <input
           ref={inputRef}
           autoFocus

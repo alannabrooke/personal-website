@@ -1,92 +1,223 @@
 "use client";
 
-import { Search, SquarePen, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Folder, Layers, PanelLeft, Search, SquarePen, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { useDesktop } from "@/components/desktop/DesktopContext";
 import type { AppProps } from "@/components/desktop/apps";
+import { createPersonalNote, updatePersonalNote, usePersonalNotes } from "@/components/desktop/personalNotes";
+import { useWindowCommands } from "@/components/desktop/windowCommands";
 import { notes } from "@/data/content";
 import { cx } from "@/lib/cx";
+import { SourceHeading, SourceItem, SourceRail } from "./library/ui";
 import { ToolButton, Toolbar } from "./ui";
+
+const folders = ["All Notes", "Portfolio", "On This Browser"] as const;
 
 export function Notes({ payload }: AppProps) {
   const { isMobile } = useDesktop();
   const [selected, setSelected] = useState(payload ?? notes[0].id);
-  const [lastPayload, setLastPayload] = useState(payload);
-  const [showList, setShowList] = useState(false);
+  const [desktopList, setDesktopList] = useState(true);
+  const [mobileList, setMobileList] = useState(false);
+  const [search, setSearch] = useState<string | null>(null);
+  const [folder, setFolder] = useState<(typeof folders)[number]>("All Notes");
+  const focusNewTitle = useRef(false);
+  const focusSearch = useCallback((input: HTMLInputElement | null) => {
+    input?.focus();
+  }, []);
 
-  // Opening a specific note from elsewhere (desktop icon, Finder) switches to it.
-  if (payload !== lastPayload) {
-    setLastPayload(payload);
-    if (payload) setSelected(payload);
-  }
-
+  const personalNotes = usePersonalNotes();
+  const personal = personalNotes.find((n) => n.id === selected && !n.deleted);
   const note = notes.find((n) => n.id === selected) ?? notes[0];
-  const listVisible = !isMobile || showList;
+  const listVisible = isMobile ? mobileList : desktopList;
+  const setListVisible = isMobile ? setMobileList : setDesktopList;
+  const query = search?.trim().toLowerCase();
+  const matches = (text: string) => !query || text.toLowerCase().includes(query);
+  const visibleNotes = folder === "On This Browser" ? [] : notes.filter((n) => matches(`${n.title} ${n.body.join(" ")}`));
+  const visiblePersonal = folder === "Portfolio" ? [] : personalNotes
+    .filter((n) => !n.deleted && matches(`${n.title || "Untitled Note"} ${n.body}`))
+    .toSorted((a, b) => b.updated - a.updated);
+
+  const toggleList = () => {
+    setListVisible(!listVisible);
+    if (listVisible) setSearch(null);
+  };
+  const showSearch = () => {
+    setListVisible(true);
+    setFolder("All Notes");
+    setSearch("");
+  };
+  const openNote = (id: string) => {
+    setSelected(id);
+    if (isMobile) {
+      setMobileList(false);
+      setSearch(null);
+    }
+  };
+  const newNote = () => {
+    const id = createPersonalNote();
+    focusNewTitle.current = true;
+    if (folder === "Portfolio") setFolder("On This Browser");
+    setSearch(null);
+    openNote(id);
+  };
+
+  useWindowCommands("notes", (command) => {
+    if (command === "new-note") newNote();
+    if (command === "find") showSearch();
+    if (command === "sidebar") toggleList();
+  });
+
+  const activeId = personal?.id ?? note.id;
+  const noteRow = (id: string, title: string) => (
+    <li key={id}>
+      <button
+        type="button"
+        aria-current={id === activeId || undefined}
+        onClick={() => openNote(id)}
+        className={cx(
+          "w-full rounded-md px-2.5 py-2 text-left text-[13px] leading-[18px] font-medium break-words text-[#302824] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#336cc0]",
+          id === activeId ? "bg-[#f0d39a]" : "hover:bg-black/5",
+        )}
+      >
+        {title}
+      </button>
+    </li>
+  );
 
   return (
-    <div className="flex h-full">
-      {listVisible && (
-        <aside
-          className={cx(
-            "flex shrink-0 flex-col border-r border-black/10 bg-[#f7f6f3]",
-            isMobile ? "absolute inset-0 z-10 w-full" : "w-[250px]",
-          )}
+    <div className="app-ref @container flex h-full flex-col [--app-accent:#82581b] [--app-rail:#f3eee4]">
+      <Toolbar inset className="border-b border-[#e4ded6] bg-[#f3f0ec] pr-3.5">
+        <ToolButton
+          label={listVisible ? "Hide note list" : "Show note list"}
+          pressed={listVisible}
+          onClick={toggleList}
         >
-          <Toolbar inset className="justify-end">
-            <span className="mr-auto text-[13px] font-semibold text-black/50">{notes.length} notes</span>
-          </Toolbar>
-          <ul className="flex-1 overflow-y-auto px-2.5 pb-3">
-            {notes.map((n) => (
-              <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelected(n.id);
-                    setShowList(false);
-                  }}
-                  className={cx(
-                    "mb-0.5 w-full rounded-md px-3 py-2 text-left",
-                    n.id === note.id ? "bg-[#ffd95c]" : "hover:bg-black/[0.04]",
-                  )}
-                >
-                  <div className="truncate text-[13px] font-semibold text-black/85">{n.title}</div>
-                  <div className="truncate text-[12px] text-black/50">
-                    <span className="text-black/70">{n.date}</span>&nbsp;&nbsp;{n.body[0]}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
+          <PanelLeft aria-hidden="true" className="size-[17px]" strokeWidth={1.7} />
+        </ToolButton>
+        <span className={cx("ml-1 mr-auto min-w-0 truncate border-l border-black/15 pl-3 text-[14px] font-semibold text-[#242329] max-[365px]:hidden", isMobile && "invisible", search !== null && "max-sm:hidden")}>
+          Notes
+        </span>
+        {search !== null && (
+          <input
+            ref={focusSearch}
+            type="search"
+            aria-label="Search notes"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSearch(null);
+            }}
+            placeholder="Search notes"
+            className="ml-auto h-7 w-36 min-w-0 rounded-md border border-black/10 bg-white/80 px-2 text-[13px] text-[#242329] focus-visible:outline-2 focus-visible:outline-[#336cc0]"
+          />
+        )}
+        <ToolButton
+          label={search === null ? "Search notes" : "Close search"}
+          pressed={search !== null}
+          onClick={() => {
+            if (search === null) showSearch();
+            else setSearch(null);
+          }}
+        >
+          <Search aria-hidden="true" className="size-[17px]" strokeWidth={1.9} />
+        </ToolButton>
+        {!(isMobile && search !== null) && (
+          <>
+            <ToolButton label="New Note" onClick={newNote}>
+              <SquarePen aria-hidden="true" className="size-[17px]" strokeWidth={1.75} />
+            </ToolButton>
+            {personal && (
+              <ToolButton label="Move Note to Trash" onClick={() => {
+                updatePersonalNote(personal.id, { deleted: true });
+                setSelected(notes[0].id);
+              }}>
+                <Trash2 aria-hidden="true" className="size-[17px]" strokeWidth={1.75} />
+              </ToolButton>
+            )}
+          </>
+        )}
+      </Toolbar>
 
-      <section className="flex min-w-0 flex-1 flex-col bg-white">
-        <Toolbar inset={isMobile} className="justify-end text-black/50">
-          {isMobile && (
-            <button type="button" onClick={() => setShowList(true)} className="mr-auto text-[13px] font-medium text-[#c79a00]">
-              ‹ Notes
-            </button>
-          )}
-          <ToolButton label="Delete (disabled)" disabled>
-            <Trash2 className="size-4" />
-          </ToolButton>
-          <ToolButton label="New note (disabled)" disabled>
-            <SquarePen className="size-4" />
-          </ToolButton>
-          <ToolButton label="Search" onClick={() => setShowList(true)} className={isMobile ? "" : "hidden"}>
-            <Search className="size-4" />
-          </ToolButton>
-        </Toolbar>
-        <article className="min-h-0 flex-1 select-text overflow-y-auto px-10 pb-10 max-sm:px-6">
-          <p className="mb-4 text-center text-[11px] text-black/40">{note.date}</p>
-          <h1 className="mb-3 text-[24px] font-bold leading-tight text-black/90">{note.title}</h1>
-          <div className="space-y-3 text-[14px] leading-relaxed text-black/80">
-            {note.body.map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
+      <div className="flex min-h-0 flex-1">
+        {listVisible && !isMobile && (
+          <SourceRail label="Notes folders" className="hidden @min-[720px]:flex @min-[720px]:w-43">
+            <SourceHeading>Folders</SourceHeading>
+            {folders.map((item) => <SourceItem key={item} icon={item === "All Notes" ? <Layers className="size-4" /> : <Folder className="size-4" />}
+              selected={folder === item} onClick={() => setFolder(item)}>{item}</SourceItem>)}
+          </SourceRail>
+        )}
+        {listVisible && (
+          <aside
+            aria-label="Note list"
+            className={cx(
+              "shrink-0 overflow-y-auto bg-[#faf7f0] px-2.5 py-4",
+              isMobile ? "w-full" : "w-[24%] min-w-[176px] max-w-[224px] border-r border-black/10",
+            )}
+          >
+            <label className={cx("mb-3 flex items-center justify-between gap-2 px-2.5 text-xs font-semibold text-[#655542]", !isMobile && "@min-[720px]:hidden")}>
+              Folder
+              <select className="min-w-0 rounded-md border border-[#e4ded6] bg-white px-2 py-1.5" value={folder} onChange={(event) => setFolder(event.target.value as (typeof folders)[number])}>
+                {folders.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            {visibleNotes.length > 0 && (
+              <>
+                <h2 className="px-2.5 pb-2 text-[13px] font-semibold text-[#55504c]">Portfolio</h2>
+                <ul className="space-y-0.5">{visibleNotes.map((n) => noteRow(n.id, n.title))}</ul>
+              </>
+            )}
+            {visiblePersonal.length > 0 && (
+              <>
+                <h2 className="px-2.5 pt-4 pb-2 text-[13px] font-semibold text-[#55504c]">On This Browser</h2>
+                <ul className="space-y-0.5">{visiblePersonal.map((n) => noteRow(n.id, n.title || "Untitled Note"))}</ul>
+              </>
+            )}
+            {visibleNotes.length === 0 && visiblePersonal.length === 0 && (
+              <p className="px-2.5 py-2 text-[13px] text-[#615854]">{query ? "No matching notes" : "No notes in this folder"}</p>
+            )}
+          </aside>
+        )}
+
+        {(!isMobile || !listVisible) && (personal ? (
+          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[#fdfdfd] px-7 py-5 md:px-8">
+            <time className="mb-3 text-[12px] text-[#706c70]" dateTime={new Date(personal.updated).toISOString()}>
+              {new Date(personal.updated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </time>
+            <input
+              ref={(input) => {
+                if (input && focusNewTitle.current) {
+                  focusNewTitle.current = false;
+                  input.focus();
+                }
+              }}
+              aria-label="Note title"
+              value={personal.title}
+              onChange={(e) => updatePersonalNote(personal.id, { title: e.target.value })}
+              placeholder="Untitled Note"
+              className="mb-4 w-full bg-transparent text-[26px] leading-tight font-bold tracking-tight text-[#1e1e23] outline-none"
+            />
+            <textarea
+              aria-label="Note text"
+              value={personal.body}
+              onChange={(e) => updatePersonalNote(personal.id, { body: e.target.value })}
+              placeholder="Start writing"
+              className="min-h-24 w-full flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-[#343239] outline-none"
+            />
           </div>
-        </article>
-      </section>
+        ) : (
+          <article className="min-w-0 flex-1 select-text overflow-y-auto bg-[#fdfdfd] px-7 py-5 md:px-8 md:py-5">
+            <p className="mb-4 text-[12px] text-[#706c70]">{note.date}</p>
+            <h1 className="mb-4 text-[28px] leading-tight font-bold tracking-[-0.025em] text-[#1e1e23]">
+              {note.title}
+            </h1>
+            <div className="max-w-[62ch] space-y-4 text-[15px] leading-relaxed text-[#343239]">
+              {note.body.map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

@@ -26,7 +26,7 @@ export function useMediaQuery(query: string) {
 }
 
 export function useIsMobile() {
-  return useMediaQuery("(max-width: 767px)");
+  return useMediaQuery("(max-width: 767px), (pointer: coarse) and (max-width: 950px) and (orientation: landscape)");
 }
 
 /** Current time in whole seconds, ticking every second. Null on the server. */

@@ -1,22 +1,29 @@
+import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
 import { About } from "@/components/apps/About";
 import { Finder } from "@/components/apps/Finder";
 import { MailApp } from "@/components/apps/Mail";
 import { Notes } from "@/components/apps/Notes";
+import { Photos } from "@/components/apps/Photos";
 import { Preview } from "@/components/apps/Preview";
 import { Terminal } from "@/components/apps/Terminal";
 import { Trash } from "@/components/apps/Trash";
+import { LinkedInBrowser } from "@/components/apps/LinkedInBrowser";
 import { profile } from "@/data/content";
 import {
   AboutIcon,
   FinderIcon,
+  LinkedInIcon,
   MailIcon,
   NotesIcon,
+  PhotosIcon,
   PreviewIcon,
   TerminalIcon,
   TrashIcon,
 } from "./icons";
 import type { AppId } from "./types";
+import { libraryApps } from "./libraryApps";
+import { LibraryIcon } from "./libraryIcons";
 
 export type AppProps = { payload?: string };
 
@@ -40,6 +47,17 @@ export type AppDef = {
 };
 
 export const APPS: Record<AppId, AppDef> = {
+  ...libraryApps,
+  launchpad: {
+    id: "launchpad",
+    name: "Apps",
+    title: "Apps",
+    Icon: () => <LibraryIcon id="launchpad" />,
+    Component: dynamic(() => import("@/components/apps/library/Launchpad").then((module) => module.Launchpad)),
+    size: { w: 850, h: 655 },
+    minSize: { w: 330, h: 330 },
+    chrome: "toolbar",
+  },
   finder: {
     id: "finder",
     name: "Finder",
@@ -56,7 +74,7 @@ export const APPS: Record<AppId, AppDef> = {
     title: "Notes",
     Icon: NotesIcon,
     Component: Notes,
-    size: { w: 780, h: 500 },
+    size: { w: 960, h: 560 },
     minSize: { w: 480, h: 300 },
     chrome: "toolbar",
   },
@@ -80,16 +98,36 @@ export const APPS: Record<AppId, AppDef> = {
     minSize: { w: 420, h: 360 },
     chrome: "toolbar",
   },
+  photos: {
+    id: "photos",
+    name: "Photos",
+    title: "Photos",
+    Icon: PhotosIcon,
+    Component: Photos,
+    size: { w: 810, h: 560 },
+    minSize: { w: 460, h: 300 },
+    chrome: "toolbar",
+  },
   terminal: {
     id: "terminal",
     name: "Terminal",
-    title: `${profile.handle} — -zsh — 80×24`,
+    title: `${profile.handle} · zsh · Portfolio Shell`,
     Icon: TerminalIcon,
     Component: Terminal,
     size: { w: 700, h: 440 },
     minSize: { w: 380, h: 220 },
     chrome: "title",
     dark: true,
+  },
+  linkedin: {
+    id: "linkedin",
+    name: "Browser",
+    title: "LinkedIn Profile",
+    Icon: LinkedInIcon,
+    Component: LinkedInBrowser,
+    size: { w: 720, h: 480 },
+    minSize: { w: 380, h: 330 },
+    chrome: "title",
   },
   trash: {
     id: "trash",
@@ -104,7 +142,7 @@ export const APPS: Record<AppId, AppDef> = {
   about: {
     id: "about",
     name: "Finder",
-    title: "",
+    title: "About This Site",
     Icon: AboutIcon,
     Component: About,
     size: { w: 300, h: 380 },

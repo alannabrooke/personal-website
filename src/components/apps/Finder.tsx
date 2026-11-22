@@ -3,56 +3,102 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
   ExternalLink,
   FileText,
   FolderOpen,
   LayoutGrid,
+  Images,
   List,
   Mail,
   Search,
   StickyNote,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { useDesktop } from "@/components/desktop/DesktopContext";
+import type { AppProps } from "@/components/desktop/apps";
 import { FolderIcon } from "@/components/desktop/icons";
+import { useWindowCommands } from "@/components/desktop/windowCommands";
 import { projects, type Project } from "@/data/content";
 import { cx } from "@/lib/cx";
 import { SidebarHeading, SidebarItem, ToolButton, Toolbar } from "./ui";
 
 type View = { kind: "all" } | { kind: "tag"; tag: string } | { kind: "project"; id: string };
+type Layout = "grid" | "list" | "gallery";
 
 const TAG_COLORS = ["#ff5f57", "#febc2e", "#28c840", "#2f8cff", "#a15ef7", "#8e8e93"];
+const TAGS = [...new Set(projects.flatMap((project) => project.tags))];
 
-export function Finder() {
+export function Finder({ payload }: AppProps) {
   const { openApp, isMobile } = useDesktop();
-  const [history, setHistory] = useState<View[]>([{ kind: "all" }]);
-  const [index, setIndex] = useState(0);
-  const [layout, setLayout] = useState<"grid" | "list">("grid");
+  const [history, setHistory] = useState<View[]>(() => {
+    const project = projects.find((p) => p.id === payload);
+    return project ? [{ kind: "all" }, { kind: "project", id: project.id }] : [{ kind: "all" }];
+  });
+  const [index, setIndex] = useState(() => history.length - 1);
+  const [layout, setLayout] = useState<Layout>("grid");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [lookId, setLookId] = useState<string | null>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const pendingSearchFocus = useRef(false);
 
   const view = history[index];
   const go = (v: View) => {
     setHistory([...history.slice(0, index + 1), v]);
     setIndex(index + 1);
     setSelected(null);
+    setLookId(null);
   };
 
-  const tags = useMemo(() => [...new Set(projects.flatMap((p) => p.tags))], []);
+  const navigate = (next: number) => {
+    if (!history[next]) return;
+    setIndex(next);
+    setSelected(null);
+    setLookId(null);
+  };
 
   const visible = projects.filter(
     (p) =>
       (view.kind !== "tag" || p.tags.includes(view.tag)) &&
-      (!query || `${p.name} ${p.tags.join(" ")} ${p.role}`.toLowerCase().includes(query.toLowerCase())),
+      (!query || `${p.name} ${p.tags.join(" ")} ${p.role}`.toLowerCase().includes(query.trim().toLowerCase())),
   );
 
   const current = view.kind === "project" ? projects.find((p) => p.id === view.id) : undefined;
   const title = current ? current.name : view.kind === "tag" ? view.tag : "Projects";
+  const highlighted = visible.find((p) => p.id === selected);
+  const galleryProject = highlighted ?? visible[0];
+  const quickLook = visible.find((p) => p.id === lookId);
+  const chooseLayout = (value: Layout) => {
+    if (current) navigate(0);
+    setLayout(value);
+  };
+  const showQuickLook = (project = highlighted ?? (layout === "gallery" ? galleryProject : undefined)) => {
+    if (project) setLookId((id) => id === project.id ? null : project.id);
+  };
+
+  useWindowCommands("finder", (command) => {
+    switch (command) {
+      case "find":
+        if (current) {
+          pendingSearchFocus.current = true;
+          navigate(0);
+        } else searchInput.current?.focus();
+        break;
+      case "back": navigate(index - 1); break;
+      case "forward": navigate(index + 1); break;
+      case "icons": chooseLayout("grid"); break;
+      case "list": chooseLayout("list"); break;
+      case "gallery": chooseLayout("gallery"); break;
+      case "quick-look": showQuickLook(); break;
+    }
+  });
 
   return (
     <div className="flex h-full">
       {!isMobile && (
-        <aside className="flex w-[190px] shrink-0 flex-col border-r border-black/10 bg-[#ebe9ef]/90 backdrop-blur-xl">
+        <aside className="flex w-[176px] shrink-0 flex-col border-r border-[#d8deea] bg-[#e9eef7]">
           <div data-drag-region className="h-[52px] shrink-0" />
           <div className="flex-1 overflow-y-auto px-2.5 pb-3">
             <SidebarHeading>Favorites</SidebarHeading>
@@ -74,7 +120,7 @@ export function Finder() {
             </SidebarItem>
 
             <SidebarHeading>Tags</SidebarHeading>
-            {tags.map((tag, i) => (
+            {TAGS.map((tag, i) => (
               <SidebarItem
                 key={tag}
                 selected={view.kind === "tag" && view.tag === tag}
@@ -88,12 +134,12 @@ export function Finder() {
         </aside>
       )}
 
-      <section className="flex min-w-0 flex-1 flex-col bg-white">
-        <Toolbar inset={isMobile} className="border-b border-black/10">
-          <ToolButton label="Back" disabled={index === 0} onClick={() => setIndex(index - 1)}>
+      <section className="relative flex min-w-0 flex-1 flex-col bg-white">
+        <Toolbar inset={isMobile} className="border-b border-[#d8deea] bg-[#f1f4fa]">
+          <ToolButton label="Back" disabled={index === 0} onClick={() => navigate(index - 1)}>
             <ChevronLeft className="size-5" />
           </ToolButton>
-          <ToolButton label="Forward" disabled={index === history.length - 1} onClick={() => setIndex(index + 1)}>
+          <ToolButton label="Forward" disabled={index === history.length - 1} onClick={() => navigate(index + 1)}>
             <ChevronRight className="size-5" />
           </ToolButton>
           <h2 className="ml-1 min-w-0 flex-1 truncate text-[15px] font-bold text-black/85">{title}</h2>
@@ -105,14 +151,31 @@ export function Finder() {
               <ToolButton label="List" pressed={layout === "list"} onClick={() => setLayout("list")}>
                 <List className="size-4" />
               </ToolButton>
+              <ToolButton label="Gallery" pressed={layout === "gallery"} onClick={() => setLayout("gallery")}>
+                <Images className="size-4" />
+              </ToolButton>
             </div>
+          )}
+          {!current && !isMobile && (
+            <ToolButton label="Quick Look" disabled={!highlighted && layout !== "gallery"} onClick={() => showQuickLook()}>
+              <Eye className="size-4" />
+            </ToolButton>
           )}
           {view.kind !== "project" && (
             <label className="ml-1 flex h-7 w-40 items-center gap-1.5 rounded-md bg-black/[0.05] px-2 text-black/40 max-sm:w-28">
               <Search className="size-3.5 shrink-0" />
               <input
+                ref={(element) => {
+                  searchInput.current = element;
+                  if (element && pendingSearchFocus.current) {
+                    pendingSearchFocus.current = false;
+                    element.focus();
+                  }
+                }}
+                type="search"
+                aria-label="Search projects"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); setSelected(null); setLookId(null); }}
                 placeholder="Search"
                 className="w-full bg-transparent text-[13px] text-black outline-none placeholder:text-black/35"
               />
@@ -123,6 +186,28 @@ export function Finder() {
         <div
           className="min-h-0 flex-1 overflow-y-auto"
           onPointerDown={(e) => e.target === e.currentTarget && setSelected(null)}
+          onKeyDown={(e) => {
+            if (current || (e.target as HTMLElement).closest("input, a")) return;
+            const id = (e.target as HTMLElement).closest<HTMLElement>("[data-project]")?.dataset.project;
+            const project = visible.find((p) => p.id === id) ?? highlighted;
+            if (!project) return;
+            if (e.key === "Enter") {
+              e.preventDefault();
+              go({ kind: "project", id: project.id });
+            } else if (e.key === " ") {
+              e.preventDefault();
+              setSelected(project.id);
+              showQuickLook(project);
+            } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+              e.preventDefault();
+              const step = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
+              const index = visible.indexOf(project);
+              const next = visible[index + step];
+              if (!next) return;
+              setSelected(next.id);
+              e.currentTarget.querySelector<HTMLElement>(`[data-project="${CSS.escape(next.id)}"]`)?.focus();
+            }
+          }}
         >
           {current ? (
             <ProjectDetail project={current} />
@@ -137,9 +222,11 @@ export function Finder() {
                 <button
                   key={p.id}
                   type="button"
+                  data-project={p.id}
+                  aria-pressed={selected === p.id}
                   onClick={() => (isMobile ? go({ kind: "project", id: p.id }) : setSelected(p.id))}
-                  onDoubleClick={() => go({ kind: "project", id: p.id })}
-                  className="flex flex-col items-center gap-1.5 outline-none"
+                  onDoubleClick={isMobile ? undefined : () => go({ kind: "project", id: p.id })}
+                  className="flex flex-col items-center gap-1.5 rounded-md focus-visible:outline-2 focus-visible:outline-[#2b61bb]"
                 >
                   <span className={cx("flex h-[70px] w-[84px] items-center justify-center rounded-md p-1.5", selected === p.id && "bg-black/[0.08]")}>
                     <FolderIcon color={p.color} />
@@ -155,6 +242,28 @@ export function Finder() {
                 </button>
               ))}
             </div>
+          ) : layout === "gallery" && galleryProject ? (
+            <div className="flex min-h-full flex-col bg-[#f8faff]">
+              <div className="flex flex-1 items-center justify-center">
+                <ProjectDetail project={galleryProject} />
+              </div>
+              <div aria-label="Gallery projects" className="flex shrink-0 gap-2 overflow-x-auto border-t border-[#d8deea] bg-[#eef2f9] px-3 py-2.5">
+                {visible.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    data-project={p.id}
+                    aria-pressed={p.id === galleryProject.id}
+                    onClick={() => setSelected(p.id)}
+                    onDoubleClick={() => go({ kind: "project", id: p.id })}
+                    className={cx("flex w-24 shrink-0 flex-col items-center gap-1 rounded-lg border border-transparent p-1.5 text-[11px]", p.id === galleryProject.id && "border-[#769bd7] bg-[#dce8fa]")}
+                  >
+                    <span className="block h-8 w-11"><FolderIcon color={p.color} /></span>
+                    <span className="max-w-full truncate">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <table className="w-full text-left text-[13px]">
               <thead className="sticky top-0 bg-white text-[11px] text-black/45">
@@ -168,10 +277,13 @@ export function Finder() {
                 {visible.map((p, i) => (
                   <tr
                     key={p.id}
+                    data-project={p.id}
+                    tabIndex={0}
+                    aria-selected={selected === p.id}
                     onClick={() => setSelected(p.id)}
                     onDoubleClick={() => go({ kind: "project", id: p.id })}
                     className={cx(
-                      "cursor-default",
+                      "cursor-default focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#2b61bb]",
                       selected === p.id ? "bg-[#2f6ee6] text-white" : i % 2 ? "bg-[#f4f4f6]" : "",
                     )}
                   >
@@ -194,6 +306,26 @@ export function Finder() {
           <footer className="shrink-0 border-t border-black/10 py-1 text-center text-[11px] text-black/45">
             {visible.length} {visible.length === 1 ? "item" : "items"}
           </footer>
+        )}
+        {quickLook && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#192b48]/30 p-4" onClick={() => setLookId(null)}>
+            <section
+              role="dialog"
+              aria-label={`Quick Look: ${quickLook.name}`}
+              className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-white/80 bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === "Escape") setLookId(null); }}
+            >
+              <div className="flex items-center gap-2 border-b border-[#d8deea] bg-[#f1f4fa] px-3 py-2">
+                <button type="button" ref={(button) => { button?.focus(); }} aria-label="Close Quick Look" onClick={() => setLookId(null)} className="rounded-md p-1.5 text-[#536480] hover:bg-black/5">
+                  <X className="size-4" />
+                </button>
+                <span className="mr-auto text-[13px] font-semibold">Quick Look</span>
+                <button type="button" onClick={() => go({ kind: "project", id: quickLook.id })} className="rounded-md bg-[#dfe8f7] px-2.5 py-1 text-[12px] text-[#254a83]">Open Project</button>
+              </div>
+              <ProjectDetail project={quickLook} />
+            </section>
+          </div>
         )}
       </section>
     </div>
